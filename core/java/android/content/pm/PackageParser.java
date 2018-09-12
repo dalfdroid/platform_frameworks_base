@@ -1247,6 +1247,19 @@ public class PackageParser {
 
             pkg.setCodePath(packageDir.getAbsolutePath());
             pkg.setUse32bitAbi(lite.use32bitAbi);
+
+            try {
+                InputStream inputStream = assets.open(PERMISSIONS_PLUGIN_MANIFEST_FILENAME, AssetManager.ACCESS_BUFFER);
+                /** Nothing to parse at the moment. Just set the flag. */
+                inputStream.close();
+
+                pkg.isPermissionsPlugin = true;
+                if (DEBUG_PARSER) Log.d(TAG, "Package is a permissions plugin: " + Log.getStackTraceString(new Exception()));
+            } catch (IOException ex) {
+                pkg.isPermissionsPlugin = false;
+                if (DEBUG_PARSER) Log.d(TAG, "Package is not a permissions plugin: " + ex);
+            }
+
             return pkg;
         } finally {
             IoUtils.closeQuietly(assetLoader);
@@ -1282,9 +1295,10 @@ public class PackageParser {
             try {
                 InputStream inputStream = assets.open(PERMISSIONS_PLUGIN_MANIFEST_FILENAME, AssetManager.ACCESS_BUFFER);
                 /** Nothing to parse at the moment. Just set the flag. */
-                pkg.isPermissionsPlugin = true;
-                if (DEBUG_PARSER) Log.d(TAG, "Package is a permissions plugin.");
                 inputStream.close();
+
+                pkg.isPermissionsPlugin = true;
+                if (DEBUG_PARSER) Log.d(TAG, "Package is a permissions plugin: " + Log.getStackTraceString(new Exception()));
             } catch (IOException ex) {
                 pkg.isPermissionsPlugin = false;
                 if (DEBUG_PARSER) Log.d(TAG, "Package is not a permissions plugin: " + ex);
