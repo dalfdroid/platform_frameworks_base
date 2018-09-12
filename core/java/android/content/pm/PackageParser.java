@@ -682,6 +682,7 @@ public class PackageParser {
         pi.overlayTarget = p.mOverlayTarget;
         pi.overlayPriority = p.mOverlayPriority;
         pi.isStaticOverlay = p.mIsStaticOverlay;
+        pi.isPermissionsPlugin = p.isPermissionsPlugin;
         pi.firstInstallTime = firstInstallTime;
         pi.lastUpdateTime = lastUpdateTime;
         if ((flags&PackageManager.GET_GIDS) != 0) {

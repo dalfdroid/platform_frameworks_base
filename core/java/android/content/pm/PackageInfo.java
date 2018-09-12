@@ -289,6 +289,9 @@ public class PackageInfo implements Parcelable {
     /** @hide */
     public boolean isStaticOverlay;
 
+    /** Is this package a permissions plugin? */
+    public boolean isPermissionsPlugin;
+
     public PackageInfo() {
     }
 
@@ -344,6 +347,7 @@ public class PackageInfo implements Parcelable {
         dest.writeString(overlayTarget);
         dest.writeInt(isStaticOverlay ? 1 : 0);
         dest.writeInt(overlayPriority);
+        dest.writeInt(isPermissionsPlugin ? 1 : 0);
     }
 
     public static final Parcelable.Creator<PackageInfo> CREATOR
@@ -396,6 +400,7 @@ public class PackageInfo implements Parcelable {
         overlayTarget = source.readString();
         isStaticOverlay = source.readInt() != 0;
         overlayPriority = source.readInt();
+        isPermissionsPlugin = (source.readInt() != 0);
 
         // The component lists were flattened with the redundant ApplicationInfo
         // instances omitted.  Distribute the canonical one here as appropriate.
