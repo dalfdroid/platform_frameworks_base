@@ -2,6 +2,8 @@ package android.app;
 
 import android.util.Log;
 
+import java.lang.reflect.Method;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +30,7 @@ public class PermissionsPluginProxyManager {
 
     private String mPackageName;
     private boolean initialized = false;
+    private ClassLoader mClassLoader;
 
     /* package */ PermissionsPluginProxyManager() {
         // Nothing to do here at the moment
@@ -39,8 +42,9 @@ public class PermissionsPluginProxyManager {
      * app, no initialization will be done.
      *
      * @param packageName The current application's package name.
+     * @param classLoader The base class loader used by the app.
      */
-    /* package */ void initialize(String packageName) {
+    /* package */ void initialize(String packageName, ClassLoader classLoader) {
 
         for (String ignoredPackage : ignoredPackages) {
             if (packageName.startsWith(ignoredPackage)) {
@@ -54,11 +58,21 @@ public class PermissionsPluginProxyManager {
         }
 
         mPackageName = packageName;
-        initialized = true;
+        mClassLoader = classLoader;
+        initializeHooks();
 
+        initialized = true;
         if (DEBUG_MESSAGES) {
-            Log.d(TAG, "Initialized the PermissionsPluginProxyManager for package:"
-                  + packageName);
+            Log.d(TAG, "Initialized the PermissionsPluginProxyManager for package: "
+                  + mPackageName);
+        }
+    }
+
+    private void initializeHooks() {
+        if (!ApiInterceptor.initialize(mPackageName)) {
+            Log.d(TAG, "Unable to initialize the API interceptor for package: " +
+                  mPackageName);
+            throw new IllegalStateException("Unable to intialize the API interceptors!");
         }
     }
 }
