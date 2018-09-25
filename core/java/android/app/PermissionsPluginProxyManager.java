@@ -20,6 +20,7 @@ public class PermissionsPluginProxyManager {
     private static final String BRIDGE_PATH="/system/framework/permissionspluginhelper.jar";
     private static final String BRIDGE_PACKAGE = "com.android.permissionsplugin";
     private static final String BRIDGE_MAIN_CLASS = BRIDGE_PACKAGE + ".PermissionsBridge";
+    private static final String BRIDGE_LOCATION_HOOK_CLASS = BRIDGE_PACKAGE + ".LocationHooks";
 
     /**
      * Do not initialize the proxy manager for packages starting with these
@@ -92,10 +93,11 @@ public class PermissionsPluginProxyManager {
     }
 
     private void hookFusedLocationProviderClient() {
-        Class<?> clazz = null;
+        Class<?> classToHook = null;
+        Class<?> permissionsHookClass = null;
 
         try {
-            clazz = Class.forName("com.google.android.gms.location.FusedLocationProviderClient",
+            classToHook = Class.forName("com.google.android.gms.location.FusedLocationProviderClient",
                                   true, mClassLoader);
         } catch (ClassNotFoundException ex) {
             if (DEBUG_MESSAGES) {
@@ -105,8 +107,19 @@ public class PermissionsPluginProxyManager {
             return;
         }
 
+        try {
+            permissionsHookClass = Class.forName(BRIDGE_LOCATION_HOOK_CLASS, true,
+                                                 mBridgeClassLoader);
+        } catch (ClassNotFoundException ex) {
+            if (DEBUG_MESSAGES) {
+                Log.d(TAG, "hookFusedLocationProviderClient: could not bridge hook class."
+                      + mPackageName);
+            }
+            return;
+        }
+
         Method methodRequestLocationUpdates = null;
-        for (Method m : clazz.getDeclaredMethods()) {
+        for (Method m : classToHook.getDeclaredMethods()) {
             if (m.getName().equals("requestLocationUpdates") && (m.getParameterCount() == 3)) {
                 methodRequestLocationUpdates = m;
             }
@@ -122,7 +135,7 @@ public class PermissionsPluginProxyManager {
 
         Method targetHook = null;
         Method targetBackup = null;
-        for (Method m : PermissionsPluginProxyManager.class.getDeclaredMethods()) {
+        for (Method m : permissionsHookClass.getDeclaredMethods()) {
             String name = m.getName();
             if (name.equals("FusedLocationHook_targetHook")) {
                 targetHook = m;
@@ -141,15 +154,4 @@ public class PermissionsPluginProxyManager {
 
         ApiInterceptor.hookMethod(methodRequestLocationUpdates, targetHook, targetBackup);
     }
-
-    public static Object FusedLocationHook_targetHook(Object thiz, Object argA, Object argB, Object argC) {
-        Log.d(TAG, "FusedLocationHooks.targetHook is running. Arguments are: " + argA + " - " + argB + " - " + argC);
-        return FusedLocationHook_targetBackup(thiz, argA, argB, argC);
-    }
-
-    public static Object FusedLocationHook_targetBackup(Object thiz, Object argA, Object argB, Object argC) {
-        /** The code here should never be run. It will be replaced during runtime by the hooking mechanism. */
-        return null;
-    }
-
 }
