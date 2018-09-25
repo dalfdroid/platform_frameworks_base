@@ -2,8 +2,9 @@ package android.app;
 
 import android.util.Log;
 
-import java.lang.reflect.Method;
+import dalvik.system.DexClassLoader;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +16,10 @@ public class PermissionsPluginProxyManager {
 
     private static final String TAG = "heimdall";
     private static final boolean DEBUG_MESSAGES = true;
+
+    private static final String BRIDGE_PATH="/system/framework/permissionspluginhelper.jar";
+    private static final String BRIDGE_PACKAGE = "com.android.permissionsplugin";
+    private static final String BRIDGE_MAIN_CLASS = BRIDGE_PACKAGE + ".PermissionsBridge";
 
     /**
      * Do not initialize the proxy manager for packages starting with these
@@ -28,9 +33,10 @@ public class PermissionsPluginProxyManager {
         ignoredPackages.add("com.qualcomm");
     }
 
-    private String mPackageName;
+    private String mPackageName = null;
     private boolean initialized = false;
-    private ClassLoader mClassLoader;
+    private ClassLoader mClassLoader = null;
+    private DexClassLoader mBridgeClassLoader = null;
 
     /* package */ PermissionsPluginProxyManager() {
         // Nothing to do here at the moment
@@ -55,6 +61,14 @@ public class PermissionsPluginProxyManager {
         if (initialized) {
             throw new UnsupportedOperationException("Cannot initialize PermissionsPluginProxyManager again for "
                                                     + packageName);
+        }
+
+        try {
+            mBridgeClassLoader = new DexClassLoader(BRIDGE_PATH, "", null, classLoader);
+            Class<?> clazz = Class.forName(BRIDGE_MAIN_CLASS, true, mBridgeClassLoader);
+        } catch (Exception ex) {
+            Log.d(TAG, "Unable to load bridge: " + ex);
+            return;
         }
 
         mPackageName = packageName;

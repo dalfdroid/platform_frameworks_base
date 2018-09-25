@@ -619,6 +619,9 @@ include hardware/interfaces/cas/1.0/CasHal.mk
 # Loaded with System.loadLibrary by android.view.textclassifier
 LOCAL_REQUIRED_MODULES += libtextclassifier
 
+# Loaded dynamically by the PermissionsPluginProxyManager
+LOCAL_REQUIRED_MODULES += permissionspluginhelper
+
 LOCAL_PROTOC_OPTIMIZE_TYPE := stream
 LOCAL_PROTOC_FLAGS := \
     -Iexternal/protobuf/src
