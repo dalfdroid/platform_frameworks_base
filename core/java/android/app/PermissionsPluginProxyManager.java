@@ -169,4 +169,12 @@ public class PermissionsPluginProxyManager implements
 
         ApiInterceptor.hookMethod(methodRequestLocationUpdates, targetHook, targetBackup);
     }
+
+    @Override
+    public Object modifyLocationData(Object locationResult) {
+        if (DEBUG_MESSAGES) {
+            Log.d(TAG, "modifyLocationData called for: " + locationResult);
+        }
+        return locationResult;
+    }
 }
