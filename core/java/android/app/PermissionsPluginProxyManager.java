@@ -12,8 +12,7 @@ import java.util.List;
  * This is the manager of the app proxies belonging to the different plugins.
  * @hide
  */
-public class PermissionsPluginProxyManager implements
-        PermissionsPluginProxyCallbacks {
+public class PermissionsPluginProxyManager {
 
     private static final String TAG = "heimdall";
     private static final boolean DEBUG_MESSAGES = true;
@@ -68,20 +67,6 @@ public class PermissionsPluginProxyManager implements
         try {
             mBridgeClassLoader = new DexClassLoader(BRIDGE_PATH, "", null, classLoader);
             Class<?> clazz = Class.forName(BRIDGE_MAIN_CLASS, true, mBridgeClassLoader);
-            boolean proxyCallbacksSet = false;
-            for (Method m : clazz.getDeclaredMethods()) {
-                if (m.getName().equals("setProxyCallbacks")) {
-                    m.invoke(null, this);
-                    proxyCallbacksSet = true;
-                    break;
-                }
-            }
-
-            if (!proxyCallbacksSet) {
-                Log.d(TAG, "Unable to load bridge because the proxy callbacks were not set.");
-                return;
-            }
-
         } catch (Exception ex) {
             Log.d(TAG, "Unable to load bridge: " + ex);
             return;
@@ -168,13 +153,5 @@ public class PermissionsPluginProxyManager implements
         }
 
         ApiInterceptor.hookMethod(methodRequestLocationUpdates, targetHook, targetBackup);
-    }
-
-    @Override
-    public Object modifyLocationData(Object locationResult) {
-        if (DEBUG_MESSAGES) {
-            Log.d(TAG, "modifyLocationData called for: " + locationResult);
-        }
-        return locationResult;
     }
 }

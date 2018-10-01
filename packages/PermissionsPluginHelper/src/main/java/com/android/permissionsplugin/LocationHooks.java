@@ -29,10 +29,7 @@ public class LocationHooks {
 
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                LocationResult modifiedResult = (LocationResult) PermissionsBridge.mProxyCallbacks
-                    .modifyLocationData(locationResult);
-
-                originalCB.onLocationResult(modifiedResult);
+                originalCB.onLocationResult(locationResult);
             }
 
             @Override
