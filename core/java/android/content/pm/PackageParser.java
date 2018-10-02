@@ -174,7 +174,7 @@ public class PackageParser {
     private static final String ANDROID_MANIFEST_FILENAME = "AndroidManifest.xml";
 
     /** File name in an APK for the permissions plugin manifest file. */
-    private static final String PERMISSIONS_PLUGIN_MANIFEST_FILENAME = "PermissionsPlugin.xml";
+    private static final String PERMISSIONS_PLUGIN_MANIFEST_FILENAME = "PermissionsPlugin.json";
 
     /** Path prefix for apps on expanded storage */
     private static final String MNT_EXPAND = "/mnt/expand/";
