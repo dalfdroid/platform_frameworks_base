@@ -1,12 +1,25 @@
 package android.app;
 
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.split.DefaultSplitAssetLoader;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageParser;
+import android.content.res.AssetManager;
 import android.util.Log;
 
 import dalvik.system.DexClassLoader;
 
+import java.io.File;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * This is the manager of the app proxies belonging to the different plugins.
@@ -19,8 +32,21 @@ public class PermissionsPluginProxyManager {
 
     private static final String BRIDGE_PATH="/system/framework/permissionspluginhelper.jar";
     private static final String BRIDGE_PACKAGE = "com.android.permissionsplugin";
+    private static final String BRIDGE_PACKAGE_API = BRIDGE_PACKAGE + ".api";
+
     private static final String BRIDGE_MAIN_CLASS = BRIDGE_PACKAGE + ".PermissionsBridge";
+    private static final String BRIDGE_PROXY_API_INTERFACE = BRIDGE_PACKAGE_API + ".IPermissionsPluginProxy";
     private static final String BRIDGE_LOCATION_HOOK_CLASS = BRIDGE_PACKAGE + ".LocationHooks";
+
+    /** File name in an APK for the permissions plugin manifest file. */
+    private static final String PERMISSIONS_PLUGIN_MANIFEST_FILENAME = "PermissionsPlugin.json";
+
+    private static final String JSON_KEY_ROOT = "permissionsplugin";
+    private static final String JSON_KEY_PKG = "supportsPkg";
+    private static final String JSON_KEY_INTERPOSED_APIS = "interposesOn";
+    private static final String JSON_KEY_PROXY_CLASS = "proxyMain";
+
+    private static final String API_LOCATION = "location";
 
     /**
      * Do not initialize the proxy manager for packages starting with these
@@ -39,6 +65,19 @@ public class PermissionsPluginProxyManager {
     private ClassLoader mClassLoader = null;
     private DexClassLoader mBridgeClassLoader = null;
 
+    private Map<String, ClassLoader> mPluginsClassLoader = new HashMap<>();
+    private Map<String, Class<?>> mPluginsClasses = new HashMap<>();
+
+    private PackageManager mPm = null;
+
+    /**
+     * The bridge helper library's method:
+     *
+     * public static void registerLocationPlugin(String pluginPackage,
+     *     Object pluginProxyMain)
+     */
+    private Method bridge_registerLocationPlugin = null;
+
     /* package */ PermissionsPluginProxyManager() {
         // Nothing to do here at the moment
     }
@@ -49,9 +88,9 @@ public class PermissionsPluginProxyManager {
      * app, no initialization will be done.
      *
      * @param packageName The current application's package name.
-     * @param classLoader The base class loader used by the app.
+     * @param context The context of the application
      */
-    /* package */ void initialize(String packageName, ClassLoader classLoader) {
+    /* package */ void initialize(String packageName, Context context) {
 
         for (String ignoredPackage : ignoredPackages) {
             if (packageName.startsWith(ignoredPackage)) {
@@ -64,9 +103,17 @@ public class PermissionsPluginProxyManager {
                                                     + packageName);
         }
 
+        ClassLoader classLoader = context.getClassLoader();
+        mPm = context.getPackageManager();
+
         try {
             mBridgeClassLoader = new DexClassLoader(BRIDGE_PATH, "", null, classLoader);
-            Class<?> clazz = Class.forName(BRIDGE_MAIN_CLASS, true, mBridgeClassLoader);
+            Class<?> bridgeClass = Class.forName(BRIDGE_MAIN_CLASS, true, mBridgeClassLoader);
+            Class<?> proxyAPIIface = Class.forName(BRIDGE_PROXY_API_INTERFACE, true, mBridgeClassLoader);
+
+            bridge_registerLocationPlugin = bridgeClass.getDeclaredMethod("registerLocationPlugin",
+                String.class, proxyAPIIface);
+
         } catch (Exception ex) {
             Log.d(TAG, "Unable to load bridge: " + ex);
             return;
@@ -153,5 +200,83 @@ public class PermissionsPluginProxyManager {
         }
 
         ApiInterceptor.hookMethod(methodRequestLocationUpdates, targetHook, targetBackup);
+    }
+
+    private boolean loadPlugin(String pluginPackageName) {
+        try {
+            // Get the package.
+            ApplicationInfo ai = mPm.getApplicationInfo(pluginPackageName, 0);
+            String pluginPath = ai.sourceDir;
+            File f = new File(pluginPath);
+            PackageParser.PackageLite pkgLite = PackageParser.parsePackageLite(f, 0);
+
+            // Load the JSON manifest
+            DefaultSplitAssetLoader loader = new DefaultSplitAssetLoader(pkgLite, 0);
+            InputStream is = loader.getBaseAssetManager()
+                .open(PERMISSIONS_PLUGIN_MANIFEST_FILENAME, AssetManager.ACCESS_BUFFER);
+
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+
+            // Parse the JSON
+            String rawJson = new String(buffer, "UTF-8");
+            JSONObject json = new JSONObject(rawJson);
+            JSONObject root = json.getJSONObject(JSON_KEY_ROOT);
+
+            String pkg = (String) root.getJSONArray(JSON_KEY_PKG).get(0);
+            JSONArray apiArray = root.getJSONArray(JSON_KEY_INTERPOSED_APIS);
+            String mainClass = root.getString(JSON_KEY_PROXY_CLASS);
+
+            return instantiatePlugin(pluginPath, pluginPackageName, pkg,
+                mainClass, apiArray);
+
+        } catch (Exception ex) {
+            Log.d(TAG, "Unexpected exception while loading requested plugin " +
+                  pluginPackageName + ": " + ex + ", stack trace: " +
+                  Log.getStackTraceString(ex));
+            return false;
+        }
+    }
+
+    private boolean instantiatePlugin(String pluginPath, String pluginPackage,
+        String supportedPackage, String mainClass, JSONArray apiArray) {
+
+        if (mPluginsClassLoader.containsKey(pluginPackage)) {
+            Log.d(TAG, "Plugin " + pluginPackage + " already instantiated!");
+            return false;
+        }
+
+        try {
+            DexClassLoader pluginClassLoader = new DexClassLoader(pluginPath,
+                "", null, mBridgeClassLoader);
+
+            Class<?> proxyMainClass = Class.forName(mainClass, true, pluginClassLoader);
+            Object proxyMain = proxyMainClass.newInstance();
+            Method initialize = proxyMainClass.getMethod("initialize", String.class);
+
+            initialize.invoke(proxyMain, mPackageName);
+            for (int i = 0; i < apiArray.length(); i++) {
+                String api = apiArray.optString(i);
+
+                if (api.equals(API_LOCATION)) {
+                    // Let the helper know there's a location plugin.
+                    bridge_registerLocationPlugin.invoke(null, pluginPackage, proxyMain);
+                } else {
+                    Log.d(TAG, "Found unsupported API " + api + " while loading plugin "
+                          + pluginPackage + " for app " + mPackageName);
+                    continue;
+                }
+            }
+
+            return true;
+
+        } catch (Exception ex) {
+            Log.d(TAG, "Unexpected exception while instantiating plugin " +
+                  pluginPackage + ": " + ex + ", stack trace: " +
+                  Log.getStackTraceString(ex));
+            return false;
+        }
     }
 }
