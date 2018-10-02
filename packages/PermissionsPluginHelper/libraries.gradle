@@ -1,0 +1,115 @@
+/*
+
+ This build script will build the dependency jar files required to implement a
+ plugin.  Invoke it with the command:
+
+ $ gradle -b libraries.gradle buildAllLibraries
+
+ The output jars will be placed in build/libs.
+
+*/
+
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.1.4'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 27
+
+    defaultConfig {
+        minSdkVersion 27
+        targetSdkVersion 27
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        baseAPI {}
+        locationAPI {}
+    }
+
+    sourceSets {
+        // The default "main" configuration.
+        main {
+            // Exclude all source files; do not compile anything.
+            java {
+                exclude '**'
+            }
+        }
+
+        // The configuration to build the base API.
+        baseAPI {
+            setRoot 'src/main'
+
+            // Exclude all non-api source files.
+            // Exclude the location API.
+            java {
+                exclude 'com/android/permissionsplugin/*.java'
+                exclude 'com/android/permissionsplugin/api/LocationInterposer.java'
+            }
+        }
+
+        // The configuration to build the location API.
+        locationAPI {
+            setRoot 'src/main'
+
+            // Only include the Location Interposer class and exclude everything
+            // else.
+            java {
+                setIncludes(new HashSet(['com/android/permissionsplugin/api/LocationInterposer.java']))
+            }
+        }
+    }
+}
+
+dependencies {
+    // Dependencies for the locationAPI configuration.
+    locationAPICompileOnly fileTree(dir: 'build/libs/', include: ['PermissionsPluginLibrary-baseAPI.jar'])
+    locationAPICompileOnly 'com.google.android.gms:play-services-location:15.0.1'
+}
+
+// Assemble the JAR file for the base API.
+task assembleBaseAPIJar(type: Jar, dependsOn: "assembleBaseAPI") {
+    baseName  "PermissionsPluginLibrary-baseAPI"
+    from "$buildDir/intermediates/classes/baseAPI/"
+    exclude '**/BuildConfig.class'
+    exclude '**/R.class'
+    exclude '**/R$*.class'
+}
+
+// Assemble the JAR file for the location API.
+task assembleLocationAPIJar(type: Jar, dependsOn: "assembleLocationAPI") {
+    baseName  "PermissionsPluginLibrary-locationAPI"
+    from "$buildDir/intermediates/classes/locationAPI/"
+    exclude '**/BuildConfig.class'
+    exclude '**/R.class'
+    exclude '**/R$*.class'
+}
+
+
+tasks.whenTaskAdded { task ->
+    // Ensure that the base API jar is produced before the LocationAPI is built.
+    if (task.name == 'assembleLocationAPI') {
+        task.dependsOn assembleBaseAPIJar
+    }
+}
+
+// Leaf task that will build all the libraries.
+task buildAllLibraries (dependsOn: ["assembleBaseAPIJar", "assembleLocationAPIJar"]) {
+    // This task is intentionally left empty.
+}
