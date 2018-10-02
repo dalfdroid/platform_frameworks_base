@@ -10,8 +10,15 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 
+import com.android.permissionsplugin.api.LocationInterposer;
+
+import java.util.Map;
+import java.util.HashMap;
+
 public class LocationHooks {
     private static final String TAG = "heimdall";
+
+    public static Map<String, LocationInterposer> locationInterposers = new HashMap<>();
 
     public static Task<Void> FusedLocationHook_targetHook(FusedLocationProviderClient thiz,
                                                           LocationRequest request,
@@ -29,7 +36,15 @@ public class LocationHooks {
 
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                originalCB.onLocationResult(locationResult);
+                LocationResult modifiedResult = locationResult;
+
+                synchronized (locationInterposers) {
+                    for (LocationInterposer interposer : locationInterposers.values()) {
+                        modifiedResult = interposer.modifyLocationData(modifiedResult);
+                    }
+                }
+
+                originalCB.onLocationResult(modifiedResult);
             }
 
             @Override
