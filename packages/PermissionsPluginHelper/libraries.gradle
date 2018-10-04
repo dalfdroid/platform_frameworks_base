@@ -3,7 +3,7 @@
  This build script will build the dependency jar files required to implement a
  plugin.  Invoke it with the command:
 
- $ gradle -b libraries.gradle buildAllLibraries
+ $ gradle -b libraries.gradle --rerun-tasks buildAllLibraries
 
  The output jars will be placed in build/libs.
 
