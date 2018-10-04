@@ -115,7 +115,12 @@ public class PermissionsPluginProxyManager {
 
         mPackageName = packageName;
         mClassLoader = classLoader;
-        initializeHooks();
+
+        /**
+         * Disable hooks for now because it does not yet have ARM support. See:
+         * https://gitlab.cs.duke.edu/Heimdall/ContextualPermissions/issues/18.
+         */
+        // initializeHooks();
 
         current = this;
 
