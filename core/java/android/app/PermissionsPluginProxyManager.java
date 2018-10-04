@@ -62,7 +62,6 @@ public class PermissionsPluginProxyManager {
     private static final List<String> ignoredPackages = new ArrayList<>();
     static {
         ignoredPackages.add("android");
-        ignoredPackages.add("com.google");
         ignoredPackages.add("com.android");
         ignoredPackages.add("com.qualcomm");
     }
