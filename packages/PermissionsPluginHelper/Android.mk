@@ -1,7 +1,7 @@
 LOCAL_PATH:= $(call my-dir)
 
 define do_gradle_build
-$(shell cd $(1) &&  gradle build)
+$(shell cd $(1) && gradle --rerun-tasks build)
 endef
 
 include $(CLEAR_VARS)
