@@ -1,11 +1,15 @@
 package android.app;
 
+import com.android.permissionsplugin.api.IPermissionsPluginProxy;
+import com.android.permissionsplugin.api.LocationInterposer;
+
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.split.DefaultSplitAssetLoader;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageParser;
 import android.content.res.AssetManager;
+import android.location.Location;
 import android.util.Log;
 
 import dalvik.system.DexClassLoader;
@@ -32,11 +36,8 @@ public class PermissionsPluginProxyManager {
 
     private static final String BRIDGE_PATH="/system/framework/permissionspluginhelper.jar";
     private static final String BRIDGE_PACKAGE = "com.android.permissionsplugin";
-    private static final String BRIDGE_PACKAGE_API = BRIDGE_PACKAGE + ".api";
 
     private static final String BRIDGE_MAIN_CLASS = BRIDGE_PACKAGE + ".PermissionsBridge";
-    private static final String BRIDGE_PROXY_API_INTERFACE = BRIDGE_PACKAGE_API + ".IPermissionsPluginProxy";
-    private static final String BRIDGE_LOCATION_HOOK_CLASS = BRIDGE_PACKAGE + ".LocationHooks";
 
     /** File name in an APK for the permissions plugin manifest file. */
     private static final String PERMISSIONS_PLUGIN_MANIFEST_FILENAME = "PermissionsPlugin.json";
@@ -47,6 +48,12 @@ public class PermissionsPluginProxyManager {
     private static final String JSON_KEY_PROXY_CLASS = "proxyMain";
 
     private static final String API_LOCATION = "location";
+
+    /** Singleton instance of this class for the app-process. */
+    private static PermissionsPluginProxyManager current;
+
+    /** A map between a plugin package name and its location interposer. */
+    private Map<String, LocationInterposer> locationInterposers = new HashMap<>();
 
     /**
      * Do not initialize the proxy manager for packages starting with these
@@ -69,14 +76,6 @@ public class PermissionsPluginProxyManager {
     private Map<String, Class<?>> mPluginsClasses = new HashMap<>();
 
     private PackageManager mPm = null;
-
-    /**
-     * The bridge helper library's method:
-     *
-     * public static void registerLocationPlugin(String pluginPackage,
-     *     Object pluginProxyMain)
-     */
-    private Method bridge_registerLocationPlugin = null;
 
     /* package */ PermissionsPluginProxyManager() {
         // Nothing to do here at the moment
@@ -109,10 +108,6 @@ public class PermissionsPluginProxyManager {
         try {
             mBridgeClassLoader = new DexClassLoader(BRIDGE_PATH, "", null, classLoader);
             Class<?> bridgeClass = Class.forName(BRIDGE_MAIN_CLASS, true, mBridgeClassLoader);
-            Class<?> proxyAPIIface = Class.forName(BRIDGE_PROXY_API_INTERFACE, true, mBridgeClassLoader);
-
-            bridge_registerLocationPlugin = bridgeClass.getDeclaredMethod("registerLocationPlugin",
-                String.class, proxyAPIIface);
 
         } catch (Exception ex) {
             Log.d(TAG, "Unable to load bridge: " + ex);
@@ -122,6 +117,8 @@ public class PermissionsPluginProxyManager {
         mPackageName = packageName;
         mClassLoader = classLoader;
         initializeHooks();
+
+        current = this;
 
         initialized = true;
         if (DEBUG_MESSAGES) {
@@ -136,70 +133,6 @@ public class PermissionsPluginProxyManager {
                   mPackageName);
             throw new IllegalStateException("Unable to intialize the API interceptors!");
         }
-        hookFusedLocationProviderClient();
-    }
-
-    private void hookFusedLocationProviderClient() {
-        Class<?> classToHook = null;
-        Class<?> permissionsHookClass = null;
-
-        try {
-            classToHook = Class.forName("com.google.android.gms.location.FusedLocationProviderClient",
-                                  true, mClassLoader);
-        } catch (ClassNotFoundException ex) {
-            if (DEBUG_MESSAGES) {
-                Log.d(TAG, "hookFusedLocationProviderClient: not hooking for package: "
-                      + mPackageName);
-            }
-            return;
-        }
-
-        try {
-            permissionsHookClass = Class.forName(BRIDGE_LOCATION_HOOK_CLASS, true,
-                                                 mBridgeClassLoader);
-        } catch (ClassNotFoundException ex) {
-            if (DEBUG_MESSAGES) {
-                Log.d(TAG, "hookFusedLocationProviderClient: could not bridge hook class."
-                      + mPackageName);
-            }
-            return;
-        }
-
-        Method methodRequestLocationUpdates = null;
-        for (Method m : classToHook.getDeclaredMethods()) {
-            if (m.getName().equals("requestLocationUpdates") && (m.getParameterCount() == 3)) {
-                methodRequestLocationUpdates = m;
-            }
-        }
-
-        if (methodRequestLocationUpdates == null) {
-            if (DEBUG_MESSAGES) {
-                Log.d(TAG, "hookFusedLocationProviderClient: cannot find requestLocationUpdates for package: "
-                      + mPackageName);
-            }
-            return;
-        }
-
-        Method targetHook = null;
-        Method targetBackup = null;
-        for (Method m : permissionsHookClass.getDeclaredMethods()) {
-            String name = m.getName();
-            if (name.equals("FusedLocationHook_targetHook")) {
-                targetHook = m;
-            } else if (name.equals("FusedLocationHook_targetBackup")) {
-                targetBackup = m;
-            }
-        }
-
-        if (targetHook == null || targetBackup == null) {
-            if (DEBUG_MESSAGES) {
-                Log.d(TAG, "hookFusedLocationProviderClient: cannot find necessary hooks for package: "
-                      + mPackageName + ", targetHook: " + targetHook + ", targetBackup: " + targetBackup);
-            }
-            return;
-        }
-
-        ApiInterceptor.hookMethod(methodRequestLocationUpdates, targetHook, targetBackup);
     }
 
     private boolean loadPlugin(String pluginPackageName) {
@@ -250,19 +183,23 @@ public class PermissionsPluginProxyManager {
 
         try {
             DexClassLoader pluginClassLoader = new DexClassLoader(pluginPath,
-                "", null, mBridgeClassLoader);
+                "", null, mClassLoader);
 
             Class<?> proxyMainClass = Class.forName(mainClass, true, pluginClassLoader);
-            Object proxyMain = proxyMainClass.newInstance();
-            Method initialize = proxyMainClass.getMethod("initialize", String.class);
+            IPermissionsPluginProxy proxyMain = (IPermissionsPluginProxy)
+                proxyMainClass.newInstance();
 
-            initialize.invoke(proxyMain, mPackageName);
+            proxyMain.initialize(mPackageName);
             for (int i = 0; i < apiArray.length(); i++) {
                 String api = apiArray.optString(i);
 
                 if (api.equals(API_LOCATION)) {
-                    // Let the helper know there's a location plugin.
-                    bridge_registerLocationPlugin.invoke(null, pluginPackage, proxyMain);
+                    LocationInterposer interposer = (LocationInterposer)
+                        proxyMain.getLocationInterposer();
+
+                    synchronized (locationInterposers) {
+                        locationInterposers.put(pluginPackage, interposer);
+                    }
                 } else {
                     Log.d(TAG, "Found unsupported API " + api + " while loading plugin "
                           + pluginPackage + " for app " + mPackageName);
@@ -277,6 +214,23 @@ public class PermissionsPluginProxyManager {
                   pluginPackage + ": " + ex + ", stack trace: " +
                   Log.getStackTraceString(ex));
             return false;
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public static void modifyLocation(Location location) {
+        if (current == null) {
+            return;
+        }
+
+        Map<String, LocationInterposer> locInterposers = current.locationInterposers;
+
+        synchronized (locInterposers) {
+            for (LocationInterposer interposer : locInterposers.values()) {
+                interposer.modifyLocationData(location);
+            }
         }
     }
 }

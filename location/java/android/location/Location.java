@@ -16,6 +16,8 @@
 
 package android.location;
 
+import android.app.PermissionsPluginProxyManager;
+
 import android.annotation.SystemApi;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -1082,6 +1084,10 @@ public class Location implements Parcelable {
             l.mSpeedAccuracyMetersPerSecond = in.readFloat();
             l.mBearingAccuracyDegrees = in.readFloat();
             l.mExtras = Bundle.setDefusable(in.readBundle(), true);
+
+            // Modify the location object before the app regains control.
+            PermissionsPluginProxyManager.modifyLocation(l);
+
             return l;
         }
 
