@@ -724,6 +724,7 @@ public class Binder implements IBinder {
                 Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
             }
         }
+        PermissionsPluginManager.perturbAllData(getCallingUid(), reply);
         checkParcel(this, code, reply, "Unreasonably large binder reply buffer");
         reply.recycle();
         data.recycle();

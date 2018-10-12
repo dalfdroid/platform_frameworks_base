@@ -1,5 +1,7 @@
 package android.os;
 
+import android.app.ActivityThread;
+
 import android.util.Log;
 
 import android.location.Location;
@@ -114,5 +116,35 @@ public class PermissionsPluginManager {
         }
 
         return getInstance().perturbAllDataImpl(targetPkg, originalParcel, false);
+    }
+
+    /**
+     * {@hide}
+     */
+    public static Parcel perturbAllData(int callingUid, Parcel originalParcel) {
+
+        ArrayDeque<PerturbableObject> perturbables = originalParcel.getPerturbables();
+        if (perturbables == null || perturbables.size() == 0) {
+            return null;
+        }
+
+        PermissionsPluginManager local = getInstance();
+        if (local.uidsToPackage == null) {
+            local.uidsToPackage = new HashMap<>();
+        }
+
+        String targetPkg = local.uidsToPackage.get(callingUid);
+        if (targetPkg == null) {
+            try {
+                targetPkg = ActivityThread.getPackageManager().getNameForUid(callingUid);
+            } catch (RemoteException ex) {
+                Log.d("heimdall", "Could not retrieve package name of uid " + callingUid + ". RemoteException: " + ex);
+                return null;
+            }
+
+            local.uidsToPackage.put(callingUid, targetPkg);
+        }
+
+        return local.perturbAllDataImpl(targetPkg, originalParcel, true);
     }
 }
