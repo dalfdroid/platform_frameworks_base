@@ -19,9 +19,6 @@ public class PermissionsPluginManager {
 
     private static final ThreadLocal<PermissionsPluginManager> sThreadLocal =
         new ThreadLocal<>();
-    static {
-        sThreadLocal.set(new PermissionsPluginManager());
-    }
 
     private HashMap<Integer, String> uidsToPackage;
 
