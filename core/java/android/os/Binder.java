@@ -16,6 +16,8 @@
 
 package android.os;
 
+import android.app.ActivityThread;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.util.ExceptionUtils;
@@ -97,6 +99,11 @@ public class Binder implements IBinder {
      * Flag indicating whether we should be tracing transact calls.
      */
     private static volatile boolean sTracingEnabled = false;
+
+    /**
+     * The package name of the app or service that created this Binder object.
+     */
+    private String mCreatorPkg = "";
 
     /**
      * Enable Binder IPC tracing.
@@ -371,6 +378,8 @@ public class Binder implements IBinder {
                     klass.getCanonicalName());
             }
         }
+
+        setCreatorPackage(ActivityThread.currentPackageName());
     }
     
     /**
@@ -728,6 +737,24 @@ public class Binder implements IBinder {
 
         return res;
     }
+
+    /**
+     * {@hide}
+     */
+    public void setCreatorPackage(String pkg) {
+        if (pkg == null) {
+            pkg = "";
+        }
+
+        mCreatorPkg = pkg;
+    }
+
+    /**
+     * {@hide}
+     */
+    public String getCreatorPackage() {
+        return mCreatorPkg;
+    }
 }
 
 final class BinderProxy implements IBinder {
@@ -736,6 +763,11 @@ final class BinderProxy implements IBinder {
 
     public native boolean pingBinder();
     public native boolean isBinderAlive();
+
+    /**
+     * The package name of the target app or service of this BinderProxy.
+     */
+    private String mTargetPkg = "";
 
     public IInterface queryLocalInterface(String descriptor) {
         return null;
@@ -847,6 +879,24 @@ final class BinderProxy implements IBinder {
             Log.w("BinderNative", "Uncaught exception from death notification",
                     exc);
         }
+    }
+
+    /**
+     * {@hide}
+     */
+    public void setTargetPackage(String pkg) {
+        if (pkg == null) {
+            pkg = "";
+        }
+
+        mTargetPkg = pkg;
+    }
+
+    /**
+     * {@hide}
+     */
+    public String getTargetPackage() {
+        return mTargetPkg;
     }
     
     final private WeakReference mSelf;
