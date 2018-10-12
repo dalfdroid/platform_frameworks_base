@@ -45,6 +45,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -209,6 +210,10 @@ public final class Parcel {
     private ArrayMap<Class, Object> mClassCookies;
 
     private RuntimeException mStack;
+
+    private ArrayDeque<PerturbableObject> perturbablesInProgress = null;
+    private ArrayDeque<PerturbableObject> perturbablesRecorded = null;
+    private boolean mIgnorePerturbables = false;
 
     private static final int POOL_SIZE = 6;
     private static final Parcel[] sOwnedPool = new Parcel[POOL_SIZE];
@@ -397,6 +402,13 @@ public final class Parcel {
         if (DEBUG_RECYCLE) mStack = null;
         freeBuffer();
 
+        if (perturbablesInProgress != null) {
+            perturbablesInProgress.clear();
+            perturbablesRecorded.clear();
+        }
+
+        mIgnorePerturbables = false;
+
         final Parcel[] pool;
         if (mOwnsNativeParcelObject) {
             pool = sOwnedPool;
@@ -561,6 +573,47 @@ public final class Parcel {
     /** @hide */
     public final void adoptClassCookies(Parcel from) {
         mClassCookies = from.mClassCookies;
+    }
+
+    /** @hide */
+    public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
+        if (mIgnorePerturbables) {
+            return;
+        }
+
+        if (perturbablesInProgress == null) {
+            perturbablesInProgress = new ArrayDeque<>();
+            perturbablesRecorded = new ArrayDeque<>();
+        }
+
+        PerturbableObject perturbableObject = new PerturbableObject();
+        perturbableObject.type = type;
+        perturbableObject.object = object;
+        perturbableObject.writeFlags = writeFlags;
+        perturbableObject.parcelStartPos = dataPosition();
+
+        perturbablesInProgress.add(perturbableObject);
+    }
+
+    /** @hide */
+    public final void finishPerturbableObject() {
+        if (mIgnorePerturbables) {
+            return;
+        }
+
+        PerturbableObject perturbableObject = perturbablesInProgress.pop();
+        perturbableObject.parcelEndPos = dataPosition();
+        perturbablesRecorded.add(perturbableObject);
+    }
+
+    /** @hide */
+    public final void setIgnorePerturbables() {
+        mIgnorePerturbables = true;
+    }
+
+    /** @hide */
+    public final ArrayDeque<PerturbableObject> getPerturbables() {
+        return perturbablesRecorded;
     }
 
     /**

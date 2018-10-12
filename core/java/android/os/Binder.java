@@ -774,7 +774,10 @@ final class BinderProxy implements IBinder {
     }
 
     public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        Binder.checkParcel(this, code, data, "Unreasonably large binder buffer");
+        Parcel perturbedParcel = PermissionsPluginManager.perturbAllData(mTargetPkg, data);
+        Parcel parcelToSend = (perturbedParcel == null) ? data : perturbedParcel;
+
+        Binder.checkParcel(this, code, parcelToSend, "Unreasonably large binder buffer");
 
         if (mWarnOnBlocking && ((flags & FLAG_ONEWAY) == 0)) {
             // For now, avoid spamming the log by disabling after we've logged
@@ -793,10 +796,14 @@ final class BinderProxy implements IBinder {
                     stackTraceElement.getClassName() + "." + stackTraceElement.getMethodName());
         }
         try {
-            return transactNative(code, data, reply, flags);
+            return transactNative(code, parcelToSend, reply, flags);
         } finally {
             if (tracingEnabled) {
                 Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
+            }
+
+            if (perturbedParcel != null) {
+                perturbedParcel.recycle();
             }
         }
     }
