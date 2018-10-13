@@ -1,26 +1,95 @@
 package android.os;
 
 import android.app.ActivityThread;
-
 import android.util.Log;
-
 import android.location.Location;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * {@hide}
  */
 public class PermissionsPluginManager {
 
-    private static final boolean DEBUG = true;
-    private static final String TAG = "heimdall";
-
     private static final ThreadLocal<PermissionsPluginManager> sThreadLocal =
         new ThreadLocal<>();
 
+    private static final boolean DEBUG = true;
+    private static final String TAG = "heimdall";
+
+    private static final HashMap<String, PluginService> sPluginServices =
+        new HashMap<>();
+
+    private static boolean mConnectMethodInUse = false;
+
+    /**
+     * Note: all non-static class variables below will be thread-local.
+     */
     private HashMap<Integer, String> uidsToPackage;
+
+    private static PluginService connectToPluginService(String pluginPackage,
+        List<String> interposers) {
+
+        synchronized (sPluginServices) {
+            while (mConnectMethodInUse) {
+                try {
+                    sPluginServices.wait();
+                } catch (InterruptedException ex) {
+                    Log.d(TAG, "Unexpected interruption while waiting to connect to " +
+                          pluginPackage + ". Aborting ...");
+                    return null;
+                }
+            }
+            mConnectMethodInUse = true;
+
+            PluginService pluginService = sPluginServices.get(pluginPackage);
+            if (pluginService == null) {
+                pluginService = new PluginService(pluginPackage, interposers);
+                sPluginServices.put(pluginPackage, pluginService);
+            }
+
+            if (pluginService.isConnected()) {
+                mConnectMethodInUse = false;
+                return pluginService;
+            }
+
+            if (DEBUG) {
+                Log.d(TAG, "Connecting to plugin service: " + pluginPackage +
+                      " with interposers " + interposers);
+            }
+
+            boolean startedConnecting = pluginService.connect();
+            if (!startedConnecting) {
+                Log.d(TAG, "Failed to try bind service to : " + pluginPackage);
+                mConnectMethodInUse = false;
+                return pluginService;
+            }
+
+            synchronized(pluginService) {
+                while (pluginService.isTryingToConnect() &&
+                       !pluginService.isConnected()) {
+                    try {
+                        pluginService.wait();
+                    } catch (InterruptedException ex) {
+                        break;
+                    }
+                }
+            }
+
+            if (!pluginService.isConnected()) {
+                Log.d(TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
+            } else {
+                if (DEBUG) {
+                    Log.d(TAG, "Connected to: " + pluginPackage);
+                }
+            }
+
+            mConnectMethodInUse = false;
+            return pluginService;
+        }
+    }
 
     private Parcel perturbAllDataImpl(String targetPkg, Parcel originalParcel, boolean modifyOriginal) {
 
