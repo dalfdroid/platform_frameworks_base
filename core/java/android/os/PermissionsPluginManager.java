@@ -106,6 +106,25 @@ public class PermissionsPluginManager {
             return null;
         }
 
+        /**
+         *
+         * <start of sample plugin code>
+         * (remember to import java.util.Arrays)
+
+          if (!targetPkg.equals("com.nr.heimdall.testapp")) {
+              return null;
+          }
+
+          PluginService pluginService =
+              connectToPluginService("blind.al.simpleplugin", Arrays.asList("location"));
+
+          if (!pluginService.isConnected()) {
+              return null;
+          }
+
+        * <end of sample plugin code>
+        */
+
         if (DEBUG) {
             Log.d(TAG, "Proceeding to perturb data for " + targetPkg + ". ModifyOriginal: " + modifyOriginal);
         }
@@ -130,6 +149,25 @@ public class PermissionsPluginManager {
             case LOCATION:
                 Location location = (Location) object;
                 // TODO(ali or nisarg): Perturb the location here.
+
+                /**
+                 * <start of location modifying code>
+
+                IPluginLocationInterposer locInterposer =
+                    (IPluginLocationInterposer) pluginService.getLocationInterposer();
+                if (locInterposer != null) {
+                    try {
+                        location = locInterposer.modifyLocation(targetPkg, location);
+                    } catch (RemoteException ex) {
+                        if (DEBUG) {
+                            Log.d(TAG, "RemoteException while modifying location for " +
+                                  targetPkg);
+                        }
+                    }
+                }
+
+                * <end of location modifying code>
+                */
                 object = location;
                 break;
 
