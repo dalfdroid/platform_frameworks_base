@@ -697,25 +697,45 @@ public class PackageManagerService extends IPackageManager.Stub
     final ArrayMap<String, Set<String>> mKnownCodebase =
             new ArrayMap<String, Set<String>>();
 
-	/**
+    /**
      * A mapping between Plugin package name and Plugin object
      * that stores information about the Plugin.
      * The keys are String (package name), values are Plugins.
      */ 
-	@GuardedBy("mPackages")
-    final ArrayMap<String, PermissionsPlugin> mPermissionsPlugins = 
-    		new ArrayMap<String, PermissionsPlugin>();
+    @GuardedBy("mPackages")
+    final ArrayMap<String, PermissionsPlugin> mPermissionsPlugins = new ArrayMap<String, PermissionsPlugin>();
 
-	/**
+    /**
      * A mapping between app package name and list of plugin packages
      * that apply to the app.
      * The keys are String (package name), values are set of Plugin packages.
      */ 
-	@GuardedBy("mPackages")
-    final ArrayMap<String, Set<String>> mPackageToPermissionsPlugins = 
-    		new ArrayMap<String, Set<String>>();
+    @GuardedBy("mPackages")
+    final ArrayMap<String, Set<String>> mPackageToPermissionsPlugins = new ArrayMap<String, Set<String>>();
 
     private final PermissionsPluginParser mPermissionsPluginParser;
+
+    /**
+     * List of trusted packages. Do not apply permissions plugins for 
+     * packages starting with these package names.
+     */
+    private static final List<String> trustedPackages = new ArrayList<>();
+    static {
+        trustedPackages.add("android");
+
+        // We trust all pacakges starting with com.google
+        // unless they start with com.google.android.apps
+        trustedPackages.add("com.google");
+        trustedPackages.add("com.android");
+        trustedPackages.add("com.qualcomm");
+    }
+
+    // List of package prefixes that belong to untrusted packages.
+    // Permissions Plugins are always applied to packages starting with these prefixes
+    private static final List<String> untrustedPackages = new ArrayList<>();
+    static {
+        untrustedPackages.add("com.google.android.apps");
+    }
 
     // Keys are isolated uids and values are the uid of the application
     // that created the isolated proccess.
@@ -3148,72 +3168,105 @@ public class PackageManagerService extends IPackageManager.Stub
      * Find installed permissions plugin by scanning the installed packages
      * This function requires lock on mPackages
      */
-	private void findPermissionsPluginLP(){
+    private void findPermissionsPluginLP(){
 
-		// Iterate through all packages to find permissions plugins
-		for (PackageParser.Package p : mPackages.values()) {
+        // Iterate through all packages to find permissions plugins
+        for (PackageParser.Package p : mPackages.values()) {
 
-			// Skip if the package is not a permissions plugin
-			if(!p.isPermissionsPlugin){
-				continue;
-			}
+            // Skip if the package is not a permissions plugin
+            if(!p.isPermissionsPlugin){
+                continue;
+            }
 
-			// Parse package to extract permissions plugin info
-			PermissionsPlugin permissionsPlugin  = mPermissionsPluginParser.parsePermissionsPlugin(p);
-			if(permissionsPlugin == null){
-				Slog.e(TAG,"Failed to parse plugin package: "+ p.packageName);
-			}else{
-				// Update permissions plugin map
-				mPermissionsPlugins.put(permissionsPlugin.packageName,permissionsPlugin);
+            // Parse package to extract permissions plugin info
+            PermissionsPlugin permissionsPlugin  = mPermissionsPluginParser.parsePermissionsPlugin(p);
+            if(permissionsPlugin == null){
+                Slog.e(TAG,"Failed to parse plugin package: "+ p.packageName);
+            }else{
+                // Update permissions plugin map
+                mPermissionsPlugins.put(permissionsPlugin.packageName,permissionsPlugin);
 
-				// Update app to permissions plugin mapping
-				for(String packageName : permissionsPlugin.supportedPackages){
-					if(!mPackageToPermissionsPlugins.containsKey(packageName)){
-						mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());	
-					}
-					mPackageToPermissionsPlugins.get(packageName).add(permissionsPlugin.packageName);
-				}
+                // Update app to permissions plugin mapping
+                for(String packageName : permissionsPlugin.supportedPackages){
+                    if(!mPackageToPermissionsPlugins.containsKey(packageName)){
+                        mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());	
+                    }
+                    mPackageToPermissionsPlugins.get(packageName).add(permissionsPlugin.packageName);
+                }
 
-				Slog.i(TAG,"Permissions plugin loaded: "+ permissionsPlugin.packageName);
-			}
+                Slog.i(TAG,"Permissions plugin loaded: "+ permissionsPlugin.packageName);
+            }
 
-			Slog.i(TAG,"Number of Permissions plugin loaded: "+ mPermissionsPlugins.size());
-		}
-	}
-
-	/**
-	 * Return list of pemrissions plugins that supports given package name if the package is an app.
-	 * Return an empty list if the give package is a plugin.
-	 * @hide
-	 */
-    @Override
-    public ParceledListSlice<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage) {
-        synchronized (mPackages) {
-        	List<PermissionsPlugin> list = new ArrayList<>();
-
-        	// Return an empty list if the appPackage is a plugin
-        	if(mPermissionsPlugins.containsKey(appPackage)){
-        		return new ParceledListSlice<>(list);
-        	}
-
-        	// Add plugins that supports given package
-        	if(mPackageToPermissionsPlugins.containsKey(appPackage)){	
-				for(String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)){
-					list.add(mPermissionsPlugins.get(pluginPackage));
-				}				
-        	}
-
-        	// Add plugins that supports all packages (*)        	
-        	if(mPackageToPermissionsPlugins.containsKey(PermissionsPlugin.ALL_PACKAGES)){	        	
-				for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
-					list.add(mPermissionsPlugins.get(pluginPackage));
-				}
-			}		
-
-			return new ParceledListSlice<>(list);        	
+            Slog.i(TAG,"Number of Permissions plugin loaded: "+ mPermissionsPlugins.size());
         }
     }
 
+    /**
+     * Return list of pemrissions plugins that supports given package name if the package is an app.
+     * Return an empty list if the give package is a plugin.
+     * @hide
+     */
+    @Override
+    public ParceledListSlice<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage) {
+        synchronized (mPackages) {
+            List<PermissionsPlugin> list = new ArrayList<>();
+
+            // Return an empty list if the appPackage is trusted
+            if(isPackageTrusted(appPackage)){
+                return new ParceledListSlice<>(list);
+            }
+
+            // Return an empty list if the appPackage is a plugin
+            if(mPermissionsPlugins.containsKey(appPackage)){
+                return new ParceledListSlice<>(list);
+            }
+
+            // Add plugins that supports given package
+            if(mPackageToPermissionsPlugins.containsKey(appPackage)){	
+                for(String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)){
+                    list.add(mPermissionsPlugins.get(pluginPackage));
+                }				
+            }
+
+            // Add plugins that supports all packages (*)        	
+            if(mPackageToPermissionsPlugins.containsKey(PermissionsPlugin.ALL_PACKAGES)){	        	
+                for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
+                    list.add(mPermissionsPlugins.get(pluginPackage));
+                }
+            }		
+
+            return new ParceledListSlice<>(list);        	
+        }
+    }
+
+    /**
+     * Check if the given package is trusted by matching package name
+     * with prefixes specified in trustedPackages and untrustedPackages lists.
+     * Rule in order:
+     * - The package is untrusted if the prefix belongs to untrusted prefix list.
+     * - The package is trusted if the prefix belongs to trusted prefix list.
+     * - The package is untrusted otherwice.
+     */
+    private Boolean isPackageTrusted(String packageName){
+
+        // Check if the package is in the untrusted list
+        for(String untrustedPrefix : untrustedPackages){
+            if(packageName.startsWith(untrustedPrefix)){
+                return false;
+            }
+        }
+
+        // Check if the package is in the trusted list
+        for(String trustedPrefix : trustedPackages){
+            if(packageName.startsWith(trustedPrefix)){
+                return true;
+            }
+        }
+
+        // Package is untrusted otherwice 
+        return false;
+
+    }
 
     /**
      * Uncompress and install stub applications.
