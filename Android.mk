@@ -263,6 +263,8 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/INetworkActivityListener.aidl \
 	core/java/android/os/INetworkManagementService.aidl \
 	core/java/android/os/IPermissionController.aidl \
+	core/java/android/os/IPluginLocationInterposer.aidl \
+	core/java/android/os/IPluginService.aidl \
 	core/java/android/os/IProcessInfoService.aidl \
 	core/java/android/os/IProgressListener.aidl \
 	core/java/android/os/IPowerManager.aidl \
@@ -618,9 +620,6 @@ include hardware/interfaces/cas/1.0/CasHal.mk
 
 # Loaded with System.loadLibrary by android.view.textclassifier
 LOCAL_REQUIRED_MODULES += libtextclassifier
-
-# Loaded dynamically by the PermissionsPluginProxyManager
-LOCAL_REQUIRED_MODULES += permissionspluginhelper
 
 LOCAL_PROTOC_OPTIMIZE_TYPE := stream
 LOCAL_PROTOC_FLAGS := \

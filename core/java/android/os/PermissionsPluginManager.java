@@ -1,9 +1,7 @@
 package android.os;
 
 import android.app.ActivityThread;
-
 import android.util.Log;
-
 import android.location.Location;
 
 import android.content.pm.ParceledListSlice;
@@ -15,29 +13,90 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Collections;
 
-
 /**
  * {@hide}
  */
 public class PermissionsPluginManager {
 
-    private static final boolean DEBUG = true;
-    private static final String TAG = "heimdall";
-
     private static final ThreadLocal<PermissionsPluginManager> sThreadLocal =
         new ThreadLocal<>();
 
+    private static final boolean DEBUG = true;
+    private static final String TAG = "heimdall";
+
+    private static final HashMap<String, PluginService> sPluginServices =
+        new HashMap<>();
+
+    private static boolean mConnectMethodInUse = false;
+
+    /**
+     * Note: all non-static class variables below will be thread-local.
+     */
     private HashMap<Integer, String> uidsToPackage;
 
-    private Parcel perturbAllDataImpl(String targetPkg, Parcel originalParcel, boolean modifyOriginal) {
+    private static PluginService connectToPluginService(String pluginPackage,
+        List<String> interposers) {
 
-        List<PermissionsPlugin> plugins = getActivePermissionsPluginsForApp(targetPkg);
-        if(DEBUG){
-            Log.d(TAG,"Received number of plugins: "+plugins.size());
+        synchronized (sPluginServices) {
+            while (mConnectMethodInUse) {
+                try {
+                    sPluginServices.wait();
+                } catch (InterruptedException ex) {
+                    Log.d(TAG, "Unexpected interruption while waiting to connect to " +
+                          pluginPackage + ". Aborting ...");
+                    return null;
+                }
+            }
+            mConnectMethodInUse = true;
+
+            PluginService pluginService = sPluginServices.get(pluginPackage);
+            if (pluginService == null) {
+                pluginService = new PluginService(pluginPackage, interposers);
+                sPluginServices.put(pluginPackage, pluginService);
+            }
+
+            if (pluginService.isConnected()) {
+                mConnectMethodInUse = false;
+                return pluginService;
+            }
+
+            if (DEBUG) {
+                Log.d(TAG, "Connecting to plugin service: " + pluginPackage +
+                      " with interposers " + interposers);
+            }
+
+            boolean startedConnecting = pluginService.connect();
+            if (!startedConnecting) {
+                Log.d(TAG, "Failed to try bind service to : " + pluginPackage);
+                mConnectMethodInUse = false;
+                return pluginService;
+            }
+
+            synchronized(pluginService) {
+                while (pluginService.isTryingToConnect() &&
+                       !pluginService.isConnected()) {
+                    try {
+                        pluginService.wait();
+                    } catch (InterruptedException ex) {
+                        break;
+                    }
+                }
+            }
+
+            if (!pluginService.isConnected()) {
+                Log.d(TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
+            } else {
+                if (DEBUG) {
+                    Log.d(TAG, "Connected to: " + pluginPackage);
+                }
+            }
+
+            mConnectMethodInUse = false;
+            return pluginService;
         }
-        for(PermissionsPlugin p : plugins){
-            Log.d(TAG,"received plugin: "+ p.packageName + " active status: "+p.isActive);
-        }
+    }
+
+    private Parcel perturbAllDataImpl(String targetPkg, Parcel originalParcel, boolean modifyOriginal) {
 
         ArrayDeque<PerturbableObject> perturbables = originalParcel.getPerturbables();
 
@@ -45,12 +104,26 @@ public class PermissionsPluginManager {
             return null;
         }
 
-        // TODO(nisarg): Check if the given package has plugins. If so, proceed
-        // with the rest of the code. Otherwise, return null. For now, return
-        // null all the time.
+        // Check if any active plugin is available for the target package.
+        // If so, proceed with the rest of the code. Otherwise, return null.
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        if(DEBUG){
+            Log.d(TAG,"Received "+pluginList.size() + " active plugins for app: "+targetPkg);
+        }
 
+        if(pluginList == null || pluginList.isEmpty()){
+            return null;
+        }
 
-        if (true) {
+        // TODO: For now, we only support one active plugin per app.
+        // In particular, we consider the first available active plugin.
+        // In future, we should allow multiple plugins.
+        PermissionsPlugin plugin = pluginList.get(0);
+
+        PluginService pluginService =
+            connectToPluginService(plugin.packageName, plugin.supportedAPIs);
+
+        if (!pluginService.isConnected()) {
             return null;
         }
 
@@ -78,6 +151,26 @@ public class PermissionsPluginManager {
             case LOCATION:
                 Location location = (Location) object;
                 // TODO(ali or nisarg): Perturb the location here.
+
+                /**
+                 * <start of location modifying code>
+                 */
+                IPluginLocationInterposer locInterposer =
+                    (IPluginLocationInterposer) pluginService.getLocationInterposer();
+                if (locInterposer != null) {
+                    try {
+                        location = locInterposer.modifyLocation(targetPkg, location);
+                    } catch (RemoteException ex) {
+                        if (DEBUG) {
+                            Log.d(TAG, "RemoteException while modifying location for " +
+                                  targetPkg);
+                        }
+                    }
+                }
+
+                /**
+                * <end of location modifying code>
+                */
                 object = location;
                 break;
 

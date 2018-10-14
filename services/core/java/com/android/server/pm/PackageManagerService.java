@@ -3182,13 +3182,19 @@ public class PackageManagerService extends IPackageManager.Stub
 	}
 
 	/**
-	 * Return list of pemrissions plugins that supports given package name (app)
+	 * Return list of pemrissions plugins that supports given package name if the package is an app.
+	 * Return an empty list if the give package is a plugin.
 	 * @hide
 	 */
     @Override
     public ParceledListSlice<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage) {
         synchronized (mPackages) {
         	List<PermissionsPlugin> list = new ArrayList<>();
+
+        	// Return an empty list if the appPackage is a plugin
+        	if(mPermissionsPlugins.containsKey(appPackage)){
+        		return new ParceledListSlice<>(list);
+        	}
 
         	// Add plugins that supports given package
         	if(mPackageToPermissionsPlugins.containsKey(appPackage)){	
@@ -3197,7 +3203,7 @@ public class PackageManagerService extends IPackageManager.Stub
 				}				
         	}
 
-        	// Add plugins that supports all packages (*)
+        	// Add plugins that supports all packages (*)        	
         	if(mPackageToPermissionsPlugins.containsKey(PermissionsPlugin.ALL_PACKAGES)){	        	
 				for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
 					list.add(mPermissionsPlugins.get(pluginPackage));

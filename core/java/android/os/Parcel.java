@@ -2172,7 +2172,11 @@ public final class Parcel {
             if (sentinel == VAL_BINDER_TARGET_SENTINEL) {
                 String targetPkg = readString();
 
-                if (binder instanceof BinderProxy) {
+                if (binder instanceof Binder) {
+                    // This should be happening because a process is sending
+                    // itself its own Binder object.
+                    ((Binder) binder).setCreatorPackage(targetPkg);
+                } else if (binder instanceof BinderProxy) {
                     ((BinderProxy) binder).setTargetPackage(targetPkg);
                 } else {
                     Log.d(HEIMDALL_TAG, "Unexpected IBinder object when reading strong binder: " + binder);
