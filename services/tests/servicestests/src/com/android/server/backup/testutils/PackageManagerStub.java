@@ -38,6 +38,8 @@ import android.os.Handler;
 import android.os.UserHandle;
 import android.os.storage.VolumeInfo;
 
+import com.android.permissionsplugin.PermissionsPlugin;	
+
 import java.util.List;
 
 /**
@@ -178,6 +180,12 @@ public class PackageManagerStub extends PackageManager {
     @Override
     public ProviderInfo getProviderInfo(ComponentName component, int flags)
             throws NameNotFoundException {
+        return null;
+    }
+
+    /** @hide */
+    @Override
+    public List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){
         return null;
     }
 

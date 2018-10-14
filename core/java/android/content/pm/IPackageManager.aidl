@@ -166,6 +166,10 @@ interface IPackageManager {
     ParceledListSlice queryIntentContentProviders(in Intent intent,
             String resolvedType, int flags, int userId);
 
+
+    // Returns a list of active Permissions Plugin for a given package name
+    ParceledListSlice getActivePermissionsPluginsForApp(in String appPackage);
+
     /**
      * This implements getInstalledPackages via a "last returned row"
      * mechanism that is not exposed in the API. This is to get around the IPC

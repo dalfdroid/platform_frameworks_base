@@ -6,8 +6,15 @@ import android.util.Log;
 
 import android.location.Location;
 
+import android.content.pm.ParceledListSlice;
+
+import com.android.permissionsplugin.PermissionsPlugin;
+
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Collections;
+
 
 /**
  * {@hide}
@@ -24,6 +31,14 @@ public class PermissionsPluginManager {
 
     private Parcel perturbAllDataImpl(String targetPkg, Parcel originalParcel, boolean modifyOriginal) {
 
+        List<PermissionsPlugin> plugins = getActivePermissionsPluginsForApp(targetPkg);
+        if(DEBUG){
+            Log.d(TAG,"Received number of plugins: "+plugins.size());
+        }
+        for(PermissionsPlugin p : plugins){
+            Log.d(TAG,"received plugin: "+ p.packageName + " active status: "+p.isActive);
+        }
+
         ArrayDeque<PerturbableObject> perturbables = originalParcel.getPerturbables();
 
         if (perturbables == null || perturbables.size() == 0) {
@@ -33,6 +48,8 @@ public class PermissionsPluginManager {
         // TODO(nisarg): Check if the given package has plugins. If so, proceed
         // with the rest of the code. Otherwise, return null. For now, return
         // null all the time.
+
+
         if (true) {
             return null;
         }
@@ -135,7 +152,7 @@ public class PermissionsPluginManager {
             try {
                 targetPkg = ActivityThread.getPackageManager().getNameForUid(callingUid);
             } catch (RemoteException ex) {
-                Log.d("heimdall", "Could not retrieve package name of uid " + callingUid + ". RemoteException: " + ex);
+                Log.d(TAG, "Could not retrieve package name of uid " + callingUid + ". RemoteException: " + ex);
                 return null;
             }
 
@@ -143,5 +160,21 @@ public class PermissionsPluginManager {
         }
 
         return local.perturbAllDataImpl(targetPkg, originalParcel, true);
+    }
+
+
+    // Retrieve list of active permissions plugin for a given package    
+    private List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){
+        try {
+            ParceledListSlice<PermissionsPlugin> parceledList =
+                    ActivityThread.getPackageManager().getActivePermissionsPluginsForApp(appPackage);
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            Log.d(TAG, "Could not retrieve permissions plugin for app " + appPackage + ". RemoteException: " + e);
+            return Collections.emptyList();
+        }
     }
 }
