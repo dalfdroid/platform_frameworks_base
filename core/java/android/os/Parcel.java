@@ -45,6 +45,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -194,6 +195,7 @@ public final class Parcel {
     private static final boolean DEBUG_RECYCLE = false;
     private static final boolean DEBUG_ARRAY_MAP = false;
     private static final String TAG = "Parcel";
+    private static final String HEIMDALL_TAG = "heimdall";
 
     @SuppressWarnings({"UnusedDeclaration"})
     private long mNativePtr; // used by native code
@@ -208,6 +210,10 @@ public final class Parcel {
     private ArrayMap<Class, Object> mClassCookies;
 
     private RuntimeException mStack;
+
+    private ArrayDeque<PerturbableObject> perturbablesInProgress = null;
+    private ArrayDeque<PerturbableObject> perturbablesRecorded = null;
+    private boolean mIgnorePerturbables = false;
 
     private static final int POOL_SIZE = 6;
     private static final Parcel[] sOwnedPool = new Parcel[POOL_SIZE];
@@ -244,6 +250,7 @@ public final class Parcel {
     private static final int VAL_SIZE = 26;
     private static final int VAL_SIZEF = 27;
     private static final int VAL_DOUBLEARRAY = 28;
+    private static final int VAL_BINDER_TARGET_SENTINEL = 0xABADF00D;
 
     // The initial int32 in a Binder call's reply Parcel header:
     // Keep these in sync with libbinder's binder/Status.h.
@@ -394,6 +401,13 @@ public final class Parcel {
     public final void recycle() {
         if (DEBUG_RECYCLE) mStack = null;
         freeBuffer();
+
+        if (perturbablesInProgress != null) {
+            perturbablesInProgress.clear();
+            perturbablesRecorded.clear();
+        }
+
+        mIgnorePerturbables = false;
 
         final Parcel[] pool;
         if (mOwnsNativeParcelObject) {
@@ -561,6 +575,47 @@ public final class Parcel {
         mClassCookies = from.mClassCookies;
     }
 
+    /** @hide */
+    public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
+        if (mIgnorePerturbables) {
+            return;
+        }
+
+        if (perturbablesInProgress == null) {
+            perturbablesInProgress = new ArrayDeque<>();
+            perturbablesRecorded = new ArrayDeque<>();
+        }
+
+        PerturbableObject perturbableObject = new PerturbableObject();
+        perturbableObject.type = type;
+        perturbableObject.object = object;
+        perturbableObject.writeFlags = writeFlags;
+        perturbableObject.parcelStartPos = dataPosition();
+
+        perturbablesInProgress.add(perturbableObject);
+    }
+
+    /** @hide */
+    public final void finishPerturbableObject() {
+        if (mIgnorePerturbables) {
+            return;
+        }
+
+        PerturbableObject perturbableObject = perturbablesInProgress.pop();
+        perturbableObject.parcelEndPos = dataPosition();
+        perturbablesRecorded.add(perturbableObject);
+    }
+
+    /** @hide */
+    public final void setIgnorePerturbables() {
+        mIgnorePerturbables = true;
+    }
+
+    /** @hide */
+    public final ArrayDeque<PerturbableObject> getPerturbables() {
+        return perturbablesRecorded;
+    }
+
     /**
      * Report whether the parcel contains any marshalled file descriptors.
      */
@@ -706,6 +761,22 @@ public final class Parcel {
      */
     public final void writeStrongBinder(IBinder val) {
         nativeWriteStrongBinder(mNativePtr, val);
+
+        if (val != null) {
+
+            String target = "";
+            if (val instanceof Binder) {
+                target = ((Binder) val).getCreatorPackage();
+            } else if (val instanceof BinderProxy) {
+                target = ((BinderProxy) val).getTargetPackage();
+            } else {
+                Log.d(HEIMDALL_TAG, "Unexpected IBinder object when writing strong binder: " + val);
+                return;
+            }
+
+            writeInt(VAL_BINDER_TARGET_SENTINEL);
+            writeString(target);
+        }
     }
 
     /**
@@ -2086,7 +2157,39 @@ public final class Parcel {
      * Read an object from the parcel at the current dataPosition().
      */
     public final IBinder readStrongBinder() {
-        return nativeReadStrongBinder(mNativePtr);
+        IBinder binder = nativeReadStrongBinder(mNativePtr);
+
+        /**
+         * We may receive a binder object either from Java code that wrote to
+         * the parcel or native code that wrote to the parcel. Since we have not
+         * (and will not) modify the native parcel writing code to also write
+         * the target package, we need to do some guesswork here to check if the
+         * target package name is available.
+         */
+        if (binder != null && dataAvail() > 0) {
+            int currentPosition = dataPosition();
+            int sentinel = readInt();
+            if (sentinel == VAL_BINDER_TARGET_SENTINEL) {
+                String targetPkg = readString();
+
+                if (binder instanceof Binder) {
+                    // This should be happening because a process is sending
+                    // itself its own Binder object.
+                    ((Binder) binder).setCreatorPackage(targetPkg);
+                } else if (binder instanceof BinderProxy) {
+                    ((BinderProxy) binder).setTargetPackage(targetPkg);
+                } else {
+                    Log.d(HEIMDALL_TAG, "Unexpected IBinder object when reading strong binder: " + binder);
+                }
+
+            } else {
+                // Reset the position since we do not have the expected
+                // sentinel.
+                setDataPosition(currentPosition);
+            }
+        }
+
+        return binder;
     }
 
     /**

@@ -54,9 +54,6 @@ public class Application extends ContextWrapper implements ComponentCallbacks2 {
     /** @hide */
     public LoadedApk mLoadedApk;
 
-    private PermissionsPluginProxyManager mProxyManager =
-        new PermissionsPluginProxyManager();
-
     public interface ActivityLifecycleCallbacks {
         void onActivityCreated(Activity activity, Bundle savedInstanceState);
         void onActivityStarted(Activity activity);
@@ -191,7 +188,6 @@ public class Application extends ContextWrapper implements ComponentCallbacks2 {
     /* package */ final void attach(Context context) {
         attachBaseContext(context);
         mLoadedApk = ContextImpl.getImpl(context).mPackageInfo;
-        mProxyManager.initialize(mLoadedApk.mPackageName, context);
     }
 
     /* package */ void dispatchActivityCreated(Activity activity, Bundle savedInstanceState) {

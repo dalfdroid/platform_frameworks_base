@@ -94,6 +94,8 @@ import com.android.internal.os.SomeArgs;
 import com.android.internal.util.Preconditions;
 import com.android.internal.util.UserIcons;
 
+import com.android.permissionsplugin.PermissionsPlugin;
+
 import dalvik.system.VMRuntime;
 
 import libcore.util.EmptyArray;
@@ -727,6 +729,22 @@ public class ApplicationPackageManager extends PackageManager {
             throw e.rethrowFromSystemServer();
         }
         throw new NameNotFoundException("No shared userid for user:"+sharedUserName);
+    }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){
+        try {
+            ParceledListSlice<PermissionsPlugin> parceledList =
+                    mPM.getActivePermissionsPluginsForApp(appPackage);
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -59,6 +59,8 @@ import android.os.storage.VolumeInfo;
 import android.util.AndroidException;
 import android.util.Log;
 
+import com.android.permissionsplugin.PermissionsPlugin;
+
 import com.android.internal.util.ArrayUtils;
 
 import dalvik.system.VMRuntime;
@@ -3254,6 +3256,11 @@ public abstract class PackageManager {
      */
     public abstract ProviderInfo getProviderInfo(ComponentName component,
             @ComponentInfoFlags int flags) throws NameNotFoundException;
+
+
+    // Retun a list of all active permissions plugins that support given package.
+    /** {@hide} */    
+    public abstract List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage);
 
     /**
      * Return a List of all packages that are installed on the device.

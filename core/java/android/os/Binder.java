@@ -16,6 +16,8 @@
 
 package android.os;
 
+import android.app.ActivityThread;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.util.ExceptionUtils;
@@ -97,6 +99,11 @@ public class Binder implements IBinder {
      * Flag indicating whether we should be tracing transact calls.
      */
     private static volatile boolean sTracingEnabled = false;
+
+    /**
+     * The package name of the app or service that created this Binder object.
+     */
+    private String mCreatorPkg = "";
 
     /**
      * Enable Binder IPC tracing.
@@ -371,6 +378,8 @@ public class Binder implements IBinder {
                     klass.getCanonicalName());
             }
         }
+
+        setCreatorPackage(ActivityThread.currentPackageName());
     }
     
     /**
@@ -715,6 +724,7 @@ public class Binder implements IBinder {
                 Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
             }
         }
+        PermissionsPluginManager.perturbAllData(getCallingUid(), reply);
         checkParcel(this, code, reply, "Unreasonably large binder reply buffer");
         reply.recycle();
         data.recycle();
@@ -728,6 +738,24 @@ public class Binder implements IBinder {
 
         return res;
     }
+
+    /**
+     * {@hide}
+     */
+    public void setCreatorPackage(String pkg) {
+        if (pkg == null) {
+            pkg = "";
+        }
+
+        mCreatorPkg = pkg;
+    }
+
+    /**
+     * {@hide}
+     */
+    public String getCreatorPackage() {
+        return mCreatorPkg;
+    }
 }
 
 final class BinderProxy implements IBinder {
@@ -737,12 +765,20 @@ final class BinderProxy implements IBinder {
     public native boolean pingBinder();
     public native boolean isBinderAlive();
 
+    /**
+     * The package name of the target app or service of this BinderProxy.
+     */
+    private String mTargetPkg = "";
+
     public IInterface queryLocalInterface(String descriptor) {
         return null;
     }
 
     public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        Binder.checkParcel(this, code, data, "Unreasonably large binder buffer");
+        Parcel perturbedParcel = PermissionsPluginManager.perturbAllData(mTargetPkg, data);
+        Parcel parcelToSend = (perturbedParcel == null) ? data : perturbedParcel;
+
+        Binder.checkParcel(this, code, parcelToSend, "Unreasonably large binder buffer");
 
         if (mWarnOnBlocking && ((flags & FLAG_ONEWAY) == 0)) {
             // For now, avoid spamming the log by disabling after we've logged
@@ -761,10 +797,14 @@ final class BinderProxy implements IBinder {
                     stackTraceElement.getClassName() + "." + stackTraceElement.getMethodName());
         }
         try {
-            return transactNative(code, data, reply, flags);
+            return transactNative(code, parcelToSend, reply, flags);
         } finally {
             if (tracingEnabled) {
                 Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
+            }
+
+            if (perturbedParcel != null) {
+                perturbedParcel.recycle();
             }
         }
     }
@@ -847,6 +887,24 @@ final class BinderProxy implements IBinder {
             Log.w("BinderNative", "Uncaught exception from death notification",
                     exc);
         }
+    }
+
+    /**
+     * {@hide}
+     */
+    public void setTargetPackage(String pkg) {
+        if (pkg == null) {
+            pkg = "";
+        }
+
+        mTargetPkg = pkg;
+    }
+
+    /**
+     * {@hide}
+     */
+    public String getTargetPackage() {
+        return mTargetPkg;
     }
     
     final private WeakReference mSelf;

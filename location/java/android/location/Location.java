@@ -16,12 +16,11 @@
 
 package android.location;
 
-import android.app.PermissionsPluginProxyManager;
-
 import android.annotation.SystemApi;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.os.Perturbable;
 import android.os.SystemClock;
 import android.util.Printer;
 import android.util.TimeUtils;
@@ -1084,10 +1083,6 @@ public class Location implements Parcelable {
             l.mSpeedAccuracyMetersPerSecond = in.readFloat();
             l.mBearingAccuracyDegrees = in.readFloat();
             l.mExtras = Bundle.setDefusable(in.readBundle(), true);
-
-            // Modify the location object before the app regains control.
-            PermissionsPluginProxyManager.modifyLocation(l);
-
             return l;
         }
 
@@ -1104,6 +1099,7 @@ public class Location implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel parcel, int flags) {
+        parcel.startPerturbableObject(Perturbable.LOCATION, this, flags);
         parcel.writeString(mProvider);
         parcel.writeLong(mTime);
         parcel.writeLong(mElapsedRealtimeNanos);
@@ -1118,6 +1114,7 @@ public class Location implements Parcelable {
         parcel.writeFloat(mSpeedAccuracyMetersPerSecond);
         parcel.writeFloat(mBearingAccuracyDegrees);
         parcel.writeBundle(mExtras);
+        parcel.finishPerturbableObject();
     }
 
     /**

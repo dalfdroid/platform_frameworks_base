@@ -244,6 +244,7 @@ package android.test.mock {
     method public void flushPackageRestrictionsAsUser(int);
     method public void freeStorage(java.lang.String, long, android.content.IntentSender);
     method public void freeStorageAndNotify(java.lang.String, long, android.content.pm.IPackageDataObserver);
+    method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getActivePermissionsPluginsForApp(java.lang.String);
     method public android.graphics.drawable.Drawable getActivityBanner(android.content.ComponentName) throws android.content.pm.PackageManager.NameNotFoundException;
     method public android.graphics.drawable.Drawable getActivityBanner(android.content.Intent) throws android.content.pm.PackageManager.NameNotFoundException;
     method public android.graphics.drawable.Drawable getActivityIcon(android.content.ComponentName) throws android.content.pm.PackageManager.NameNotFoundException;
