@@ -24,7 +24,7 @@ public class PermissionsPluginManager {
     private static final boolean DEBUG = true;
     private static final String TAG = "heimdall";
 
-    private static final HashMap<String, PluginService> sPluginServices =
+    private static final HashMap<String, PluginProxy> sPluginProxies =
         new HashMap<>();
 
     private static boolean mConnectMethodInUse = false;
@@ -34,13 +34,13 @@ public class PermissionsPluginManager {
      */
     private HashMap<Integer, String> uidsToPackage;
 
-    private static PluginService connectToPluginService(String pluginPackage,
+    private static PluginProxy connectToPluginService(String pluginPackage,
         List<String> interposers) {
 
-        synchronized (sPluginServices) {
+        synchronized (sPluginProxies) {
             while (mConnectMethodInUse) {
                 try {
-                    sPluginServices.wait();
+                    sPluginProxies.wait();
                 } catch (InterruptedException ex) {
                     Log.d(TAG, "Unexpected interruption while waiting to connect to " +
                           pluginPackage + ". Aborting ...");
@@ -49,15 +49,15 @@ public class PermissionsPluginManager {
             }
             mConnectMethodInUse = true;
 
-            PluginService pluginService = sPluginServices.get(pluginPackage);
-            if (pluginService == null) {
-                pluginService = new PluginService(pluginPackage, interposers);
-                sPluginServices.put(pluginPackage, pluginService);
+            PluginProxy pluginProxy = sPluginProxies.get(pluginPackage);
+            if (pluginProxy == null) {
+                pluginProxy = new PluginProxy(pluginPackage, interposers);
+                sPluginProxies.put(pluginPackage, pluginProxy);
             }
 
-            if (pluginService.isConnected()) {
+            if (pluginProxy.isConnected()) {
                 mConnectMethodInUse = false;
-                return pluginService;
+                return pluginProxy;
             }
 
             if (DEBUG) {
@@ -65,25 +65,25 @@ public class PermissionsPluginManager {
                       " with interposers " + interposers);
             }
 
-            boolean startedConnecting = pluginService.connect();
+            boolean startedConnecting = pluginProxy.connect();
             if (!startedConnecting) {
                 Log.d(TAG, "Failed to try bind service to : " + pluginPackage);
                 mConnectMethodInUse = false;
-                return pluginService;
+                return pluginProxy;
             }
 
-            synchronized(pluginService) {
-                while (pluginService.isTryingToConnect() &&
-                       !pluginService.isConnected()) {
+            synchronized(pluginProxy) {
+                while (pluginProxy.isTryingToConnect() &&
+                       !pluginProxy.isConnected()) {
                     try {
-                        pluginService.wait();
+                        pluginProxy.wait();
                     } catch (InterruptedException ex) {
                         break;
                     }
                 }
             }
 
-            if (!pluginService.isConnected()) {
+            if (!pluginProxy.isConnected()) {
                 Log.d(TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
             } else {
                 if (DEBUG) {
@@ -92,7 +92,7 @@ public class PermissionsPluginManager {
             }
 
             mConnectMethodInUse = false;
-            return pluginService;
+            return pluginProxy;
         }
     }
 
@@ -121,10 +121,10 @@ public class PermissionsPluginManager {
         // In future, we should allow multiple plugins.
         PermissionsPlugin plugin = pluginList.get(0);
 
-        PluginService pluginService =
+        PluginProxy pluginProxy =
             connectToPluginService(plugin.packageName, plugin.supportedAPIs);
 
-        if (pluginService == null || !pluginService.isConnected()) {
+        if (pluginProxy == null || !pluginProxy.isConnected()) {
             return null;
         }
 
@@ -153,7 +153,7 @@ public class PermissionsPluginManager {
             case LOCATION:
                 Location location = (Location) object;
                 IPluginLocationInterposer locInterposer =
-                    (IPluginLocationInterposer) pluginService.getLocationInterposer();
+                    (IPluginLocationInterposer) pluginProxy.getLocationInterposer();
 
                 if (locInterposer != null) {
                     try {

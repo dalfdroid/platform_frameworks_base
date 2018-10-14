@@ -13,11 +13,11 @@ import android.os.IPluginLocationInterposer;
 import java.util.List;
 
 /**
- * This class represents a distinct plugin service.
+ * This class represents a proxy to a distinct plugin service.
  *
  * {@hide}
  */
-public class PluginService {
+public class PluginProxy {
     private static final String PLUGIN_MAIN = ".PluginMain";
     private static final String TAG = "heimdall";
 
@@ -42,7 +42,7 @@ public class PluginService {
      * @param interposers A list of data interposers to retrieve from the plugin.
      * {@hide}
      */
-    public PluginService(String pluginPackage, List<String> interposers) {
+    public PluginProxy(String pluginPackage, List<String> interposers) {
         mPackage = pluginPackage;
         mInterposers = interposers;
 
@@ -50,32 +50,32 @@ public class PluginService {
         mConnection = new ServiceConnection() {
                 @Override
                 public void onServiceConnected(ComponentName name, IBinder service) {
-                    synchronized(PluginService.this) {
+                    synchronized(PluginProxy.this) {
                         mService = IPluginService.Stub.asInterface(service);
                         retrieveInterposers();
                         mConnecting = false;
                         mConnected = true;
-                        PluginService.this.notifyAll();
+                        PluginProxy.this.notifyAll();
                     }
                 }
 
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
-                    synchronized(PluginService.this) {
+                    synchronized(PluginProxy.this) {
                         reset();
-                        PluginService.this.notifyAll();
+                        PluginProxy.this.notifyAll();
                     }
                 }
 
                 @Override
                 public void onBindingDied(ComponentName name) {
-                    synchronized(PluginService.this) {
+                    synchronized(PluginProxy.this) {
                         Context c = ActivityThread.currentApplication();
                         if (c != null) {
                             c.unbindService(this);
                         }
                         reset();
-                        PluginService.this.notifyAll();
+                        PluginProxy.this.notifyAll();
                     }
                 }
 
