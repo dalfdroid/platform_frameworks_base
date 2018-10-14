@@ -124,7 +124,7 @@ public class PermissionsPluginManager {
         PluginService pluginService =
             connectToPluginService(plugin.packageName, plugin.supportedAPIs);
 
-        if (!pluginService.isConnected()) {
+        if (pluginService == null || !pluginService.isConnected()) {
             return null;
         }
 
