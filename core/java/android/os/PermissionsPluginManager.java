@@ -107,11 +107,12 @@ public class PermissionsPluginManager {
         // Check if any active plugin is available for the target package.
         // If so, proceed with the rest of the code. Otherwise, return null.
         List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
-        if(DEBUG){
-            Log.d(TAG,"Received "+pluginList.size() + " active plugins for app: "+targetPkg);
+        if (DEBUG) {
+            Log.d(TAG, "Received " + pluginList.size() +
+                  " active plugins for app: " + targetPkg);
         }
 
-        if(pluginList == null || pluginList.isEmpty()){
+        if (pluginList == null || pluginList.isEmpty()) {
             return null;
         }
 
@@ -128,7 +129,8 @@ public class PermissionsPluginManager {
         }
 
         if (DEBUG) {
-            Log.d(TAG, "Proceeding to perturb data for " + targetPkg + ". ModifyOriginal: " + modifyOriginal);
+            Log.d(TAG, "Proceeding to perturb data for " + targetPkg +
+                  ". ModifyOriginal: " + modifyOriginal);
         }
 
         Parcel perturbedParcel = Parcel.obtain();
@@ -150,13 +152,9 @@ public class PermissionsPluginManager {
             switch (perturbableObject.type) {
             case LOCATION:
                 Location location = (Location) object;
-                // TODO(ali or nisarg): Perturb the location here.
-
-                /**
-                 * <start of location modifying code>
-                 */
                 IPluginLocationInterposer locInterposer =
                     (IPluginLocationInterposer) pluginService.getLocationInterposer();
+
                 if (locInterposer != null) {
                     try {
                         location = locInterposer.modifyLocation(targetPkg, location);
@@ -168,14 +166,12 @@ public class PermissionsPluginManager {
                     }
                 }
 
-                /**
-                * <end of location modifying code>
-                */
                 object = location;
                 break;
 
             default:
-                Log.d(TAG, "Unhandled parcelable: " + perturbableObject.type + ". Writing original ...");
+                Log.d(TAG, "Unhandled parcelable: " + perturbableObject.type +
+                      ". Writing original ...");
                 break;
             }
 
