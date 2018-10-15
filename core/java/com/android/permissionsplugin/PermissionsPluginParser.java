@@ -79,11 +79,6 @@ public class PermissionsPluginParser {
                 plugin.supportedAPIs.add(supportedAPIs.getString(i));
             }
 
-            // Newly loaded plugin is by default inactive until user explicitly activate it
-            // TODO (nisarg): Currently setting it to true for testing, change it to false
-            // after integrating the permissions plugin controller
-            plugin.isActive = true;
-
         }catch (Exception e){
             e.printStackTrace();
         }

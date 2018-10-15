@@ -10,6 +10,9 @@ public class PermissionsPlugin implements Parcelable{
 
     public static final String ALL_PACKAGES = "*";
 
+    // Row id of this plugin in plugin db
+    public long id;
+
     // Package name of the plugin
     public String packageName;
 
@@ -35,6 +38,10 @@ public class PermissionsPlugin implements Parcelable{
 
     public PermissionsPlugin(String packageName){
         this.packageName = packageName;
+
+        // Set default values
+        id = -1;
+        isActive = false;
     }
 
     @Override
@@ -52,7 +59,8 @@ public class PermissionsPlugin implements Parcelable{
         }
     };
 
-    public PermissionsPlugin(Parcel dest) {
+    public PermissionsPlugin(Parcel dest) { 
+        id = dest.readLong();
         packageName = dest.readString().intern();
         proxyClass = dest.readString().intern();
         supportedPackages = dest.createStringArrayList();
@@ -64,6 +72,7 @@ public class PermissionsPlugin implements Parcelable{
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(id);
         dest.writeString(packageName);
         dest.writeString(proxyClass);
         dest.writeStringList(supportedPackages);
