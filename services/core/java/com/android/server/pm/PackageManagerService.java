@@ -3221,10 +3221,6 @@ public class PackageManagerService extends IPackageManager.Stub
                 // Parse newly found plugin package to extract permissions plugin info
                 PermissionsPlugin plugin  = mPermissionsPluginParser.parsePermissionsPlugin(p);
 
-                // TODO: Setting active status true for debugging
-                // It should be set by user form the plugin controller app
-                plugin.isActive = true;
-
                 if(plugin == null){
                     Slog.e(TAG_HEIMDALL,"Failed to parse plugin package: "+ p.packageName);
                 }else{
