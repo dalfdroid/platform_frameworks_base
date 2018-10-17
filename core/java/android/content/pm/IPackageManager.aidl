@@ -167,8 +167,14 @@ interface IPackageManager {
             String resolvedType, int flags, int userId);
 
 
-    // Returns a list of active Permissions Plugin for a given package name
+    // Return a list of active Permissions Plugin for a given package name
     ParceledListSlice getActivePermissionsPluginsForApp(in String appPackage);
+
+    // Return a list of installed permissions plugins
+    ParceledListSlice getInstalledPermissionsPlugins();
+
+    // Set activation status of the permissions plugin
+    boolean setActivationStatusForPermissionsPlugin(in String pluginPackage, in boolean isActive);
 
     /**
      * This implements getInstalledPackages via a "last returned row"

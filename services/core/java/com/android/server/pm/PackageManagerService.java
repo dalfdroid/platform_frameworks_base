@@ -3292,22 +3292,71 @@ public class PackageManagerService extends IPackageManager.Stub
                 return new ParceledListSlice<>(list);
             }
 
-            // Add plugins that supports given package
+            // Add active plugins that supports given package
             if(mPackageToPermissionsPlugins.containsKey(appPackage)){	
                 for(String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)){
-                    list.add(mPermissionsPlugins.get(pluginPackage));
+                    PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+                    if(plugin.isActive){
+                        list.add(mPermissionsPlugins.get(pluginPackage));
+                    }
                 }				
             }
 
             // Add plugins that supports all packages (*)        	
             if(mPackageToPermissionsPlugins.containsKey(PermissionsPlugin.ALL_PACKAGES)){	        	
                 for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
-                    list.add(mPermissionsPlugins.get(pluginPackage));
+                    PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+                    if(plugin.isActive){
+                        list.add(mPermissionsPlugins.get(pluginPackage));
+                    }                    
                 }
             }		
 
             return new ParceledListSlice<>(list);        	
         }
+    }
+
+    /**
+     * Return list of installed pemrissions plugins
+     * @hide
+     */
+    @Override
+    public ParceledListSlice<PermissionsPlugin> getInstalledPermissionsPlugins() {
+        List<PermissionsPlugin> list = new ArrayList<PermissionsPlugin>(mPermissionsPlugins.values());
+        return new ParceledListSlice<>(list);
+    }
+
+    /**
+     * Activate permissions plugin.
+     * 
+     * @param pluginPackage package name of the plugin
+     * @param isActive activation status
+     * @return True if the activation status is succsefully set otherwise false 
+     * @hide
+     */
+    @Override
+    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive) {
+        if(DEBUG_HEIMDALL){
+            Slog.i(TAG_HEIMDALL,"setActivationStatusForPermissionsPlugin pluginPackage: " + pluginPackage + " isActive: "+ isActive);
+        }
+
+        PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+        if(null != plugin){
+            // Update plugin
+            plugin.isActive = isActive;
+
+            // Update plugin db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"plugin with package name " + pluginPackage + " update status: " + updatedRows);
+            }
+
+            return (updatedRows==1);         
+        }
+
+        Slog.d(TAG_HEIMDALL,"Failed to find plugin with package name " + pluginPackage);
+        return false;
     }
 
     /**

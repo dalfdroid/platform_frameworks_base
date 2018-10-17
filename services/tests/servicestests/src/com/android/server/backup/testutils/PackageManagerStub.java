@@ -189,6 +189,18 @@ public class PackageManagerStub extends PackageManager {
         return null;
     }
 
+    /** @hide */
+    @Override
+    public List<PermissionsPlugin> getInstalledPermissionsPlugins(){
+        return null;
+    }
+
+    /** @hide */
+    @Override
+    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
+        return false;
+    }
+
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {
         return null;

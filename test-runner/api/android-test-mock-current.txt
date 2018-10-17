@@ -276,6 +276,7 @@ package android.test.mock {
     method public java.util.List<android.content.pm.ApplicationInfo> getInstalledApplicationsAsUser(int, int);
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackages(int);
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackagesAsUser(int, int);
+    method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getInstalledPermissionsPlugins();
     method public java.lang.String getInstallerPackageName(java.lang.String);
     method public java.lang.String getInstantAppAndroidId(java.lang.String, android.os.UserHandle);
     method public byte[] getInstantAppCookie();
@@ -385,6 +386,7 @@ package android.test.mock {
     method public android.content.pm.ProviderInfo resolveContentProviderAsUser(java.lang.String, int, int);
     method public android.content.pm.ResolveInfo resolveService(android.content.Intent, int);
     method public void revokeRuntimePermission(java.lang.String, java.lang.String, android.os.UserHandle);
+    method public boolean setActivationStatusForPermissionsPlugin(java.lang.String, boolean);
     method public void setApplicationCategoryHint(java.lang.String, int);
     method public void setApplicationEnabledSetting(java.lang.String, int, int);
     method public boolean setApplicationHiddenSettingAsUser(java.lang.String, boolean, android.os.UserHandle);

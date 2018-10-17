@@ -3262,6 +3262,15 @@ public abstract class PackageManager {
     /** {@hide} */    
     public abstract List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage);
 
+    // Retun a list of all installed permissions plugins.
+    /** {@hide} */    
+    public abstract List<PermissionsPlugin> getInstalledPermissionsPlugins();
+
+    // Set activation status of the given permissions plugin.
+    /** {@hide} */    
+    public abstract boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive);
+
+
     /**
      * Return a List of all packages that are installed on the device.
      *

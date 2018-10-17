@@ -747,6 +747,34 @@ public class ApplicationPackageManager extends PackageManager {
         }
     }
 
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")    
+    public List<PermissionsPlugin> getInstalledPermissionsPlugins(){
+        try {
+            ParceledListSlice<PermissionsPlugin> parceledList =
+                    mPM.getInstalledPermissionsPlugins();
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }        
+    }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")        
+    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
+        Log.i("Heimdall_","setActivationStatusForPermissionsPlugin pluginPackage: " + pluginPackage + " isActive: " +  isActive);
+        try {
+            return mPM.setActivationStatusForPermissionsPlugin(pluginPackage,isActive);            
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }           
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {

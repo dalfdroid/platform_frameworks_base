@@ -61,12 +61,10 @@ public class PermissionsPlugin implements Parcelable{
 
     public PermissionsPlugin(Parcel dest) { 
         id = dest.readLong();
-        packageName = dest.readString().intern();
-        proxyClass = dest.readString().intern();
+        packageName = dest.readString();
+        proxyClass = dest.readString();
         supportedPackages = dest.createStringArrayList();
-        internStringArrayList(supportedPackages);
         supportedAPIs = dest.createStringArrayList();
-        internStringArrayList(supportedAPIs);
         isActive = (dest.readInt() == 1);
     }
 
@@ -86,13 +84,4 @@ public class PermissionsPlugin implements Parcelable{
         return 0;
     }
     
-    private static void internStringArrayList(List<String> list) {
-        if (list != null) {
-            final int N = list.size();
-            for (int i = 0; i < N; ++i) {
-                list.set(i, list.get(i).intern());
-            }
-        }
-    }
-
 }
