@@ -3145,7 +3145,7 @@ public class PackageManagerService extends IPackageManager.Stub
             }
 
             // Load permissions plugins
-            loadPermissionsPluginLP();
+            loadPermissionsPluginsLP();
 
         } // synchronized (mPackages)
         } // synchronized (mInstallLock)
@@ -3179,7 +3179,7 @@ public class PackageManagerService extends IPackageManager.Stub
      * Finally, remove uninstalled plugins from the plugin db.
      * This function requires lock on mPackages
      */    
-    private void loadPermissionsPluginLP(){
+    private void loadPermissionsPluginsLP(){
 
         // Retrieve saved plugins from the plugin db
         ArrayMap<String,PermissionsPlugin> savedPlugins = mPermissionsPluginDb.loadPlugins();
@@ -3201,16 +3201,8 @@ public class PackageManagerService extends IPackageManager.Stub
                 // Get saved plugin and remove from the list
                 PermissionsPlugin plugin = savedPlugins.remove(p.packageName);
 
-                // Update permissions plugin map
-                mPermissionsPlugins.put(plugin.packageName,plugin);
-
-                // Update app to permissions plugin mapping
-                for(String packageName : plugin.supportedPackages){
-                    if(!mPackageToPermissionsPlugins.containsKey(packageName)){
-                        mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
-                    }
-                    mPackageToPermissionsPlugins.get(packageName).add(plugin.packageName);
-                }
+                // Update permissions plugin maps
+                updatePermissionsPluginMap(plugin);
 
                 if(DEBUG_HEIMDALL){
                     Slog.i(TAG_HEIMDALL,"Permissions plugin loaded from db. Package name: " + 
@@ -3218,36 +3210,9 @@ public class PackageManagerService extends IPackageManager.Stub
                         plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
                 }                         
             }else{
-                // Parse newly found plugin package to extract permissions plugin info
-                PermissionsPlugin plugin  = mPermissionsPluginParser.parsePermissionsPlugin(p);
-
-                if(plugin == null){
-                    Slog.e(TAG_HEIMDALL,"Failed to parse plugin package: "+ p.packageName);
-                }else{
-                    // Update permissions plugin map
-                    mPermissionsPlugins.put(plugin.packageName,plugin);
-
-                    // Update app to permissions plugin mapping
-                    for(String packageName : plugin.supportedPackages){
-                        if(!mPackageToPermissionsPlugins.containsKey(packageName)){
-                            mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
-                        }
-                        mPackageToPermissionsPlugins.get(packageName).add(plugin.packageName);
-                    }
-
-                    // Add new plugin to the plugin db
-                    long newRowId = mPermissionsPluginDb.insertPlugin(plugin);
-                    if(-1 == newRowId){
-                        Log.d(TAG_HEIMDALL,"Failed to insert plugin " + plugin.packageName + " in plugin db.");
-                    }
-
-                    if(DEBUG_HEIMDALL){                        
-                        Slog.i(TAG_HEIMDALL,"Permissions plugin parsed. Package name: " + 
-                            plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
-                            plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
-                    }
-                }
-
+                // We found newly installed package that is a permissions plugin.
+                // Add newly found permissions plugin.
+                addPermissionsPluginLP(p);
             }
 
         }
@@ -3266,6 +3231,80 @@ public class PackageManagerService extends IPackageManager.Stub
             Slog.i(TAG_HEIMDALL,"Number of Permissions plugins loaded: "+ mPermissionsPlugins.size());
         }
 
+    }
+
+    /**
+     * Parse newly installed plugin package and add the plugin to plugin db
+     * @param package Newly installed permissions plugin package
+     */
+    private void addPermissionsPluginLP(PackageParser.Package pkg){
+        // Parse newly found plugin package to extract permissions plugin info
+        PermissionsPlugin plugin  = mPermissionsPluginParser.parsePermissionsPlugin(pkg);
+
+        if(plugin == null){
+            Slog.e(TAG_HEIMDALL,"Failed to parse plugin package: "+ pkg.packageName);
+        }else{
+            // Update permissions plugin maps
+            updatePermissionsPluginMap(plugin);
+
+            // Add new plugin to the plugin db
+            long newRowId = mPermissionsPluginDb.insertPlugin(plugin);
+            if(-1 == newRowId){
+                Log.d(TAG_HEIMDALL,"Failed to insert plugin " + plugin.packageName + " in plugin db.");
+            }
+
+            if(DEBUG_HEIMDALL){                        
+                Slog.i(TAG_HEIMDALL,"Permissions plugin parsed. Package name: " + 
+                    plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
+                    plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
+            }
+        }
+    }
+
+
+    /**
+     * Remove uninstalled package from plugin db and update plugin map
+     * @param packageName Package name of the unistalled permissions plugin
+     */
+    private void removePermissionsPluginLP(String packageName){
+
+        // Remove the permissions plugin from the plugin mapping
+        PermissionsPlugin plugin = mPermissionsPlugins.remove(packageName);
+        if(null == plugin){
+            Slog.e(TAG_HEIMDALL,"Failed to find package " + packageName + " in permissions plugin map.");
+            return;
+        }
+
+        // Remove the plugin from app to plugin map
+        for(String pkg : mPackageToPermissionsPlugins.keySet()){
+            mPackageToPermissionsPlugins.get(pkg).remove(plugin.packageName);
+        }
+
+        // Remove the plugin from the plugin db
+        int deletedRows = mPermissionsPluginDb.deletePlugin(plugin);
+        if(1!=deletedRows){
+            Slog.e(TAG_HEIMDALL,"Failed to remove plugin " + plugin.packageName + " from the plugin db.");
+            return;
+        }
+
+        if(DEBUG_HEIMDALL){
+            Slog.i(TAG_HEIMDALL,"Permissions plugin " + plugin.packageName + " removed.");
+        }
+
+    }
+
+    // Add plugin to permissions plugin list and update app to plugin mapping
+    private void updatePermissionsPluginMap(PermissionsPlugin plugin){
+        // Update permissions plugin map
+        mPermissionsPlugins.put(plugin.packageName,plugin);
+
+        // Update app to permissions plugin mapping
+        for(String packageName : plugin.supportedPackages){
+            if(!mPackageToPermissionsPlugins.containsKey(packageName)){
+                mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
+            }
+            mPackageToPermissionsPlugins.get(packageName).add(plugin.packageName);
+        }
     }
 
     /**
@@ -19143,6 +19182,16 @@ public class PackageManagerService extends IPackageManager.Stub
             if (res.returnCode == PackageManager.INSTALL_SUCCEEDED) {
                 updateSequenceNumberLP(ps, res.newUsers);
                 updateInstantAppInstallerLocked(pkgName);
+
+                // If the installed package is a permissions plugin
+                // add plugin to db and update plugin map.
+                if(pkg.isPermissionsPlugin){
+                    if(DEBUG_HEIMDALL){
+                        Slog.i(TAG_HEIMDALL,"Found new plugin " + pkgName + ". Installing...");
+                    }
+                    addPermissionsPluginLP(pkg);    
+                }
+                
             }
         }
     }
@@ -19757,6 +19806,16 @@ public class PackageManagerService extends IPackageManager.Stub
                     }
                     updateSequenceNumberLP(uninstalledPs, info.removedUsers);
                     updateInstantAppInstallerLocked(packageName);
+
+                    // If the uninstalled package is a plugin
+                    // remove plugin from the db and update plugin map
+                    if(pkg.isPermissionsPlugin){
+                        if(DEBUG_HEIMDALL){
+                            Slog.i(TAG_HEIMDALL,"Uninstalled plugin " + packageName + ". Removing...");
+                        }
+                        removePermissionsPluginLP(packageName);    
+                    }
+
                 }
             }
         }
