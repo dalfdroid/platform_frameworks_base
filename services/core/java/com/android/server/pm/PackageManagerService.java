@@ -3202,7 +3202,7 @@ public class PackageManagerService extends IPackageManager.Stub
                 PermissionsPlugin plugin = savedPlugins.remove(p.packageName);
 
                 // Update permissions plugin maps
-                updatePermissionsPluginMap(plugin);
+                addToPermissionsPluginMapLP(plugin);
 
                 if(DEBUG_HEIMDALL){
                     Slog.i(TAG_HEIMDALL,"Permissions plugin loaded from db. Package name: " + 
@@ -3245,7 +3245,7 @@ public class PackageManagerService extends IPackageManager.Stub
             Slog.e(TAG_HEIMDALL,"Failed to parse plugin package: "+ pkg.packageName);
         }else{
             // Update permissions plugin maps
-            updatePermissionsPluginMap(plugin);
+            addToPermissionsPluginMapLP(plugin);
 
             // Add new plugin to the plugin db
             long newRowId = mPermissionsPluginDb.insertPlugin(plugin);
@@ -3294,7 +3294,7 @@ public class PackageManagerService extends IPackageManager.Stub
     }
 
     // Add plugin to permissions plugin list and update app to plugin mapping
-    private void updatePermissionsPluginMap(PermissionsPlugin plugin){
+    private void addToPermissionsPluginMapLP(PermissionsPlugin plugin){
         // Update permissions plugin map
         mPermissionsPlugins.put(plugin.packageName,plugin);
 
@@ -3357,8 +3357,10 @@ public class PackageManagerService extends IPackageManager.Stub
      */
     @Override
     public ParceledListSlice<PermissionsPlugin> getInstalledPermissionsPlugins() {
-        List<PermissionsPlugin> list = new ArrayList<PermissionsPlugin>(mPermissionsPlugins.values());
-        return new ParceledListSlice<>(list);
+        synchronized(mPackages){
+            List<PermissionsPlugin> list = new ArrayList<PermissionsPlugin>(mPermissionsPlugins.values());
+            return new ParceledListSlice<>(list);
+        }
     }
 
     /**
@@ -3375,19 +3377,21 @@ public class PackageManagerService extends IPackageManager.Stub
             Slog.i(TAG_HEIMDALL,"setActivationStatusForPermissionsPlugin pluginPackage: " + pluginPackage + " isActive: "+ isActive);
         }
 
-        PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-        if(null != plugin){
-            // Update plugin
-            plugin.isActive = isActive;
+        synchronized(mPackages){
+            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+            if(null != plugin){
+                // Update plugin
+                plugin.isActive = isActive;
 
-            // Update plugin db
-            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
+                // Update plugin db
+                int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"plugin with package name " + pluginPackage + " update status: " + updatedRows);
+                if(DEBUG_HEIMDALL){
+                    Slog.d(TAG_HEIMDALL,"plugin with package name " + pluginPackage + " update status: " + updatedRows);
+                }
+
+                return (updatedRows==1);         
             }
-
-            return (updatedRows==1);         
         }
 
         Slog.d(TAG_HEIMDALL,"Failed to find plugin with package name " + pluginPackage);
