@@ -20,21 +20,23 @@ public class PermissionsPlugin implements Parcelable{
     public String proxyClass;
 
     // Packages (apps) supported by this plugin
+    // '*' means all apps are supported
     public ArrayList<String> supportedPackages;
 
     // Apis supported by this plugin
     public ArrayList<String> supportedAPIs;
 
+    // Apps selected by user to apply this plugin to
+    // must be a subset of the supportedPackages
+    public ArrayList<String> targetPackages;
+
     // Flag to check if plugin is active
     public Boolean isActive;
 
-//        // Apps selected by user to apply this plugin to
-//        // must be a subset of the supportedPackages
-//        public ArrayList<String> targetPackages;
-//
-//        // APIs selected by user for this plugin
-//        // must be a subset of the supportedAPIs
-//        public ArrayList<String> targetAPIs;
+
+   // // APIs selected by user for this plugin
+   // // must be a subset of the supportedAPIs
+   // public ArrayList<String> targetAPIs;
 
     public PermissionsPlugin(String packageName){
         this.packageName = packageName;
@@ -65,6 +67,7 @@ public class PermissionsPlugin implements Parcelable{
         proxyClass = dest.readString();
         supportedPackages = dest.createStringArrayList();
         supportedAPIs = dest.createStringArrayList();
+        targetPackages = dest.createStringArrayList();
         isActive = (dest.readInt() == 1);
     }
 
@@ -75,6 +78,7 @@ public class PermissionsPlugin implements Parcelable{
         dest.writeString(proxyClass);
         dest.writeStringList(supportedPackages);
         dest.writeStringList(supportedAPIs);
+        dest.writeStringList(targetPackages);
         dest.writeInt(isActive ? 1 : 0);
     }
 

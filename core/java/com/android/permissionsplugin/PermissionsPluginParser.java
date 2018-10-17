@@ -79,6 +79,9 @@ public class PermissionsPluginParser {
                 plugin.supportedAPIs.add(supportedAPIs.getString(i));
             }
 
+            // By default target packages are same as supported packages
+            plugin.targetPackages = new ArrayList<>(plugin.supportedPackages);
+
         }catch (Exception e){
             e.printStackTrace();
         }

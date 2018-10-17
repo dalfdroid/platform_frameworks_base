@@ -39,9 +39,8 @@ public class PermissionsPluginDb{
         // Column name for the plugin package stored as string
         public static final String COLUMN_NAME_PACKAGE_NAME = "package_name";
 
-        // Column name for the active status of plugin stored as integer
-        // 1 - active, 0 - inactive
-        public static final String COLUMN_NAME_IS_ACTIVE = "is_active";
+        // Column name for the plugin package proxy clas
+        public static final String COLUMN_NAME_PROXY_CLASS = "proxy_class";
 
         // Column name for the packages supported by the plugin
         public static final String COLUMN_NAME_SUPPORTED_PACKAGES = "supported_packages";
@@ -49,8 +48,13 @@ public class PermissionsPluginDb{
         // Column name for the APIs supported by the plugin
         public static final String COLUMN_NAME_SUPPORTED_APIS = "supported_apis";
 
-        // Column name for the plugin package proxy clas
-        public static final String COLUMN_NAME_PROXY_CLASS = "proxy_class";
+        // Column name for the target packages of the plugin
+        public static final String COLUMN_NAME_TARGET_PACKAGES = "target_packages";
+
+        // Column name for the active status of plugin stored as integer
+        // 1 - active, 0 - inactive
+        public static final String COLUMN_NAME_IS_ACTIVE = "is_active";
+
 
     }
 
@@ -73,9 +77,10 @@ public class PermissionsPluginDb{
                 "CREATE TABLE " + PluginEntry.TABLE_NAME + " (" +
                 PluginEntry._ID + " INTEGER PRIMARY KEY," +
                 PluginEntry.COLUMN_NAME_PACKAGE_NAME + " TEXT NOT NULL UNIQUE," +
+                PluginEntry.COLUMN_NAME_PROXY_CLASS + " TEXT," + 
                 PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " TEXT," + 
                 PluginEntry.COLUMN_NAME_SUPPORTED_APIS + " TEXT," + 
-                PluginEntry.COLUMN_NAME_PROXY_CLASS + " TEXT," + 
+                PluginEntry.COLUMN_NAME_TARGET_PACKAGES + " TEXT," +                 
                 PluginEntry.COLUMN_NAME_IS_ACTIVE + " INTEGER NOT NULL)";
             db.execSQL(SQL_CREATE_PLUGIN_TABLE);
 
@@ -124,18 +129,19 @@ public class PermissionsPluginDb{
                 // Get the index of the columns we are interested in
                 int idIndex = cursor.getColumnIndex(PluginEntry._ID);
                 int packageNameIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_PACKAGE_NAME);
-                int isActiveIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_IS_ACTIVE);        
+                int proxyClassIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_PROXY_CLASS);
                 int supportePkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
                 int supporteAPIIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_APIS);
-                int proxyClassIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_PROXY_CLASS);
+                int targetPkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_TARGET_PACKAGES);
+                int isActiveIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_IS_ACTIVE);        
 
                 while(cursor.moveToNext()){
                     String packageName = cursor.getString(packageNameIndex);
                     PermissionsPlugin plugin = new PermissionsPlugin(packageName);
+                    
                     plugin.id = cursor.getInt(idIndex);
-                    plugin.isActive = cursor.getInt(isActiveIndex)==1?true:false;
                     plugin.proxyClass = cursor.getString(proxyClassIndex);
-
+                    
                     // Parse supported packages
                     String supportedPackages = cursor.getString(supportePkgIndex);
                     plugin.supportedPackages = new ArrayList<String>(Arrays.asList(supportedPackages.split(",")));
@@ -143,6 +149,12 @@ public class PermissionsPluginDb{
                     // Parse supported APIs
                     String supportedAPIs = cursor.getString(supporteAPIIndex);
                     plugin.supportedAPIs = new ArrayList<String>(Arrays.asList(supportedAPIs.split(",")));
+
+                    // Parse target packages
+                    String targetPackages = cursor.getString(targetPkgIndex);
+                    plugin.targetPackages = new ArrayList<String>(Arrays.asList(targetPackages.split(",")));
+
+                    plugin.isActive = cursor.getInt(isActiveIndex)==1?true:false;
 
                     plugins.put(plugin.packageName,plugin);
                 }
@@ -174,8 +186,8 @@ public class PermissionsPluginDb{
 
             // Create a new map of values, where column names are the keys
             ContentValues values = new ContentValues();
+
             values.put(PluginEntry.COLUMN_NAME_PACKAGE_NAME, plugin.packageName);
-            values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
             values.put(PluginEntry.COLUMN_NAME_PROXY_CLASS, plugin.proxyClass);
 
             // Put supported packages as a string in the db
@@ -183,6 +195,11 @@ public class PermissionsPluginDb{
 
             // Put supported APIs as a string in the db
             values.put(PluginEntry.COLUMN_NAME_SUPPORTED_APIS, String.join(",",plugin.supportedAPIs));
+
+            // Put target packages as a string in the db
+            values.put(PluginEntry.COLUMN_NAME_TARGET_PACKAGES, String.join(",",plugin.targetPackages));
+
+            values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
 
             // Insert the new row, returning the primary key value of the new row
             long newRowId = db.insert(PluginEntry.TABLE_NAME, null, values);
@@ -247,8 +264,8 @@ public class PermissionsPluginDb{
 
             // Create a new map of values, where column names are the keys
             ContentValues values = new ContentValues();
+
             values.put(PluginEntry.COLUMN_NAME_PACKAGE_NAME, plugin.packageName);
-            values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
             values.put(PluginEntry.COLUMN_NAME_PROXY_CLASS, plugin.proxyClass);
 
             // Put supported packages as a string in the db
@@ -256,6 +273,11 @@ public class PermissionsPluginDb{
 
             // Put supported APIs as a string in the db
             values.put(PluginEntry.COLUMN_NAME_SUPPORTED_APIS, String.join(",",plugin.supportedAPIs));
+
+            // Put target packages as a string in the db
+            values.put(PluginEntry.COLUMN_NAME_TARGET_PACKAGES, String.join(",",plugin.targetPackages));
+
+            values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
 
             // Prepare selection criteria to select the plugin row
             String selection = PluginEntry._ID + " = ? ";
