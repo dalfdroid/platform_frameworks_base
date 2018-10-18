@@ -767,9 +767,19 @@ public class ApplicationPackageManager extends PackageManager {
     @Override
     @SuppressWarnings("unchecked")        
     public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
-        Log.i("Heimdall_","setActivationStatusForPermissionsPlugin pluginPackage: " + pluginPackage + " isActive: " +  isActive);
         try {
             return mPM.setActivationStatusForPermissionsPlugin(pluginPackage,isActive);            
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }           
+    }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")  
+    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){          
+        try {
+            return mPM.setTargetPackagesForPlugin(pluginPackage, targetPackages);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }           

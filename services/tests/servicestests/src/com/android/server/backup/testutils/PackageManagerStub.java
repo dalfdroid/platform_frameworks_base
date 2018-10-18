@@ -201,6 +201,13 @@ public class PackageManagerStub extends PackageManager {
         return false;
     }
 
+    /** @hide */
+    @Override
+    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){
+        return false;
+    }
+
+
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {
         return null;

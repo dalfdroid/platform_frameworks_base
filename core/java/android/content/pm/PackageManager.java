@@ -3270,6 +3270,9 @@ public abstract class PackageManager {
     /** {@hide} */    
     public abstract boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive);
 
+    // Set target packages of the given plugin
+    /** {@hide} */    
+    public abstract boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages);
 
     /**
      * Return a List of all packages that are installed on the device.

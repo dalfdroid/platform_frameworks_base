@@ -395,6 +395,7 @@ package android.test.mock {
     method public void setInstallerPackageName(java.lang.String, java.lang.String);
     method public boolean setInstantAppCookie(byte[]);
     method public java.lang.String[] setPackagesSuspendedAsUser(java.lang.String[], boolean, int);
+    method public boolean setTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>);
     method public void setUpdateAvailable(java.lang.String, boolean);
     method public boolean shouldShowRequestPermissionRationale(java.lang.String);
     method public void unregisterMoveCallback(android.content.pm.PackageManager.MoveCallback);

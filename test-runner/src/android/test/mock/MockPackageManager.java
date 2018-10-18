@@ -223,6 +223,12 @@ public class MockPackageManager extends PackageManager {
         throw new UnsupportedOperationException();
     }
 
+    /** @hide */
+    @Override
+    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {
         throw new UnsupportedOperationException();

@@ -3249,8 +3249,8 @@ public class PackageManagerService extends IPackageManager.Stub
             addToPermissionsPluginMapLP(plugin);
 
             // Add new plugin to the plugin db
-            long newRowId = mPermissionsPluginDb.insertPlugin(plugin);
-            if(-1 == newRowId){
+            plugin.id = mPermissionsPluginDb.insertPlugin(plugin);
+            if(-1 == plugin.id){
                 Log.d(TAG_HEIMDALL,"Failed to insert plugin " + plugin.packageName + " in plugin db.");
             }
 
@@ -3354,7 +3354,7 @@ public class PackageManagerService extends IPackageManager.Stub
     }
 
     /**
-     * Return list of installed pemrissions plugins
+     * Return list of installed pemrissions plugins.
      * @hide
      */
     @Override
@@ -3368,9 +3368,9 @@ public class PackageManagerService extends IPackageManager.Stub
     /**
      * Activate permissions plugin.
      * 
-     * @param pluginPackage package name of the plugin
-     * @param isActive activation status
-     * @return True if the activation status is succsefully set otherwise false 
+     * @param pluginPackage package name of the plugin.
+     * @param isActive activation status.
+     * @return True if the activation status is succsefully set otherwise false.
      * @hide
      */
     @Override
@@ -3398,6 +3398,43 @@ public class PackageManagerService extends IPackageManager.Stub
 
         Slog.d(TAG_HEIMDALL,"Failed to find plugin with package name " + pluginPackage);
         return false;
+    }
+
+
+    /** 
+     * Set target packages of the given plugin.
+     * @param pluginPackage Package name of the plugin.
+     * @param targetPackages List of target packages.
+     * @return True if the operation is successful otherwise false.
+     * @hide
+     */
+    @Override
+    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages) {
+        synchronized(mPackages){
+            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+            if(null == plugin){
+                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                return false;           
+            }
+
+            // Clear the old target package list
+            plugin.targetPackages.clear();
+
+            // Add target packages if they are in the supported packages
+            if(plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES)){
+                plugin.targetPackages.addAll(targetPackages);
+            }else{
+                for(String packageName : targetPackages){
+                    if(plugin.supportedPackages.contains(packageName)){
+                        plugin.targetPackages.add(packageName);
+                    }
+                }
+            }
+
+            // Update plugin in db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
+            return (updatedRows == 1);
+        }
     }
 
     /**

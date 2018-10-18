@@ -176,6 +176,9 @@ interface IPackageManager {
     // Set activation status of the permissions plugin
     boolean setActivationStatusForPermissionsPlugin(in String pluginPackage, in boolean isActive);
 
+    // Set target packages of the given plugin
+    boolean setTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages);
+
     /**
      * This implements getInstalledPackages via a "last returned row"
      * mechanism that is not exposed in the API. This is to get around the IPC
