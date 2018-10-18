@@ -3207,7 +3207,8 @@ public class PackageManagerService extends IPackageManager.Stub
                 if(DEBUG_HEIMDALL){
                     Slog.i(TAG_HEIMDALL,"Permissions plugin loaded from db. Package name: " + 
                         plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
-                        plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
+                        plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs + 
+                        " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
                 }                         
             }else{
                 // We found newly installed package that is a permissions plugin.
@@ -3256,7 +3257,8 @@ public class PackageManagerService extends IPackageManager.Stub
             if(DEBUG_HEIMDALL){                        
                 Slog.i(TAG_HEIMDALL,"Permissions plugin parsed. Package name: " + 
                     plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
-                    plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
+                    plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs +
+                    " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
             }
         }
     }
@@ -3276,7 +3278,7 @@ public class PackageManagerService extends IPackageManager.Stub
         }
 
         // Remove the plugin from app to plugin map
-        for(String pkg : mPackageToPermissionsPlugins.keySet()){
+        for(String pkg : plugin.targetPackages){
             mPackageToPermissionsPlugins.get(pkg).remove(plugin.packageName);
         }
 
@@ -3299,7 +3301,7 @@ public class PackageManagerService extends IPackageManager.Stub
         mPermissionsPlugins.put(plugin.packageName,plugin);
 
         // Update app to permissions plugin mapping
-        for(String packageName : plugin.supportedPackages){
+        for(String packageName : plugin.targetPackages){
             if(!mPackageToPermissionsPlugins.containsKey(packageName)){
                 mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
             }
@@ -3332,7 +3334,7 @@ public class PackageManagerService extends IPackageManager.Stub
                 for(String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)){
                     PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
                     if(plugin.isActive){
-                        list.add(mPermissionsPlugins.get(pluginPackage));
+                        list.add(plugin);
                     }
                 }				
             }
@@ -3342,7 +3344,7 @@ public class PackageManagerService extends IPackageManager.Stub
                 for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
                     PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
                     if(plugin.isActive){
-                        list.add(mPermissionsPlugins.get(pluginPackage));
+                        list.add(plugin);
                     }                    
                 }
             }		
