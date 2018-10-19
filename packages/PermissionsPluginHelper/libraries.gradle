@@ -59,10 +59,6 @@ android {
         // The configuration to build the base API.
         baseAPI {
             setRoot 'src/main'
-
-            java {
-                exclude '**'
-            }
         }
     }
 }

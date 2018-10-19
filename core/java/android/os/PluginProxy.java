@@ -28,7 +28,7 @@ public class PluginProxy {
 
     private ComponentName mComponent = null;
     private ServiceConnection mConnection = null;
-    private IPluginService mService = null;
+    private PluginServiceProxy mService = null;
     private IPluginLocationInterposer mLocationInterposer = null;
 
     private boolean mConnecting = false;
@@ -51,7 +51,8 @@ public class PluginProxy {
                 @Override
                 public void onServiceConnected(ComponentName name, IBinder service) {
                     synchronized(PluginProxy.this) {
-                        mService = IPluginService.Stub.asInterface(service);
+                        service = Binder.allowBlocking(service);
+                        mService = (PluginServiceProxy) PluginService.asInterface(service);
                         retrieveInterposers();
                         mConnecting = false;
                         mConnected = true;
@@ -92,7 +93,12 @@ public class PluginProxy {
         for (String interposer : mInterposers) {
             if (interposer.equals(INTERPOSER_LOCATION)) {
                 try {
-                    mLocationInterposer = mService.getLocationInterposer();
+                    IBinder binder = mService.getLocationInterposerRaw();
+                    if (binder != null) {
+                        binder = Binder.allowBlocking(binder);
+                        mLocationInterposer =
+                            IPluginLocationInterposer.Stub.asInterface(binder);
+                    }
                 } catch (RemoteException ex) {
                     Log.d(TAG, "Could not get location interposer from plugin service " + mPackage);
                 }
