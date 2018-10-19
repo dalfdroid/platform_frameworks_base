@@ -211,9 +211,10 @@ public final class Parcel {
 
     private RuntimeException mStack;
 
-    private ArrayDeque<PerturbableObject> perturbablesInProgress = null;
-    private ArrayDeque<PerturbableObject> perturbablesRecorded = null;
-    private boolean mIgnorePerturbables = false;
+    private ArrayDeque<ParcelObject> mRecordedObjects = new ArrayDeque<>();
+    private ArrayDeque<PerturbableObject> mPerturbablesInProgress = null;
+    private boolean mHasPerturbables = false;
+    private boolean mStopRecording = false;
 
     private static final int POOL_SIZE = 6;
     private static final Parcel[] sOwnedPool = new Parcel[POOL_SIZE];
@@ -402,12 +403,13 @@ public final class Parcel {
         if (DEBUG_RECYCLE) mStack = null;
         freeBuffer();
 
-        if (perturbablesInProgress != null) {
-            perturbablesInProgress.clear();
-            perturbablesRecorded.clear();
+        if (mPerturbablesInProgress != null) {
+            mPerturbablesInProgress.clear();
         }
 
-        mIgnorePerturbables = false;
+        mRecordedObjects.clear();
+        mHasPerturbables = false;
+        mStopRecording = false;
 
         final Parcel[] pool;
         if (mOwnsNativeParcelObject) {
@@ -577,43 +579,45 @@ public final class Parcel {
 
     /** @hide */
     public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
-        if (mIgnorePerturbables) {
+        if (mStopRecording) {
             return;
         }
 
-        if (perturbablesInProgress == null) {
-            perturbablesInProgress = new ArrayDeque<>();
-            perturbablesRecorded = new ArrayDeque<>();
+        if (mPerturbablesInProgress == null) {
+            mPerturbablesInProgress = new ArrayDeque<>();
         }
 
-        PerturbableObject perturbableObject = new PerturbableObject();
-        perturbableObject.type = type;
-        perturbableObject.object = object;
-        perturbableObject.writeFlags = writeFlags;
-        perturbableObject.parcelStartPos = dataPosition();
+        PerturbableObject perturbableObject =
+            new PerturbableObject(type, object, dataPosition(), writeFlags);
 
-        perturbablesInProgress.add(perturbableObject);
+        mPerturbablesInProgress.add(perturbableObject);
     }
 
     /** @hide */
     public final void finishPerturbableObject() {
-        if (mIgnorePerturbables) {
+        if (mStopRecording) {
             return;
         }
 
-        PerturbableObject perturbableObject = perturbablesInProgress.pop();
-        perturbableObject.parcelEndPos = dataPosition();
-        perturbablesRecorded.add(perturbableObject);
+        PerturbableObject perturbableObject = mPerturbablesInProgress.pop();
+        perturbableObject.setEndPos(dataPosition());
+        mRecordedObjects.add(perturbableObject);
+        mHasPerturbables = true;
     }
 
     /** @hide */
-    public final void setIgnorePerturbables() {
-        mIgnorePerturbables = true;
+    public final void stopRecording() {
+        mStopRecording = true;
     }
 
     /** @hide */
-    public final ArrayDeque<PerturbableObject> getPerturbables() {
-        return perturbablesRecorded;
+    public final boolean hasPerturbables() {
+        return mHasPerturbables;
+    }
+
+    /** @hide */
+    public final ArrayDeque<ParcelObject> getRecordedObjects() {
+        return mRecordedObjects;
     }
 
     /**
@@ -760,6 +764,13 @@ public final class Parcel {
      * growing dataCapacity() if needed.
      */
     public final void writeStrongBinder(IBinder val) {
+
+        ParcelObject parcelObject = null;
+        if (!mStopRecording) {
+            parcelObject = new ParcelObject(val, dataPosition(), ParcelObject.BINDER_OBJECT);
+            mRecordedObjects.add(parcelObject);
+        }
+
         nativeWriteStrongBinder(mNativePtr, val);
 
         if (val != null) {
@@ -776,6 +787,10 @@ public final class Parcel {
 
             writeInt(VAL_BINDER_TARGET_SENTINEL);
             writeString(target);
+        }
+
+        if (!mStopRecording) {
+            parcelObject.setEndPos(dataPosition());
         }
     }
 

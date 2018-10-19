@@ -96,11 +96,79 @@ public class PermissionsPluginManager {
         }
     }
 
-    private Parcel perturbAllDataImpl(String targetPkg, Parcel originalParcel, boolean modifyOriginal) {
+    private static void copySourceToTargetParcel(Parcel sourceParcel,
+            Parcel targetParcel, ArrayDeque<ParcelObject> objectsToWrite) {
 
-        ArrayDeque<PerturbableObject> perturbables = originalParcel.getPerturbables();
+        targetParcel.stopRecording();
+        int originalPos = 0;
 
-        if (perturbables == null || perturbables.size() == 0) {
+        while (!objectsToWrite.isEmpty()) {
+            ParcelObject parcelObject = objectsToWrite.getFirst();
+            if (originalPos < parcelObject.mStartPos) {
+                int length = parcelObject.mStartPos - originalPos;
+                targetParcel.appendFrom(sourceParcel, originalPos, length);
+            }
+
+            switch (parcelObject.mObjectType) {
+            case ParcelObject.BINDER_OBJECT:
+                IBinder val = (IBinder) parcelObject.mObject;
+                targetParcel.writeStrongBinder(val);
+                break;
+
+            case ParcelObject.PERTURBABLE_OBJECT:
+                PerturbableObject pertObj = (PerturbableObject) parcelObject;
+                Parcelable parcelable = pertObj.getLatestParcelable();
+                parcelable.writeToParcel(targetParcel, pertObj.mWriteFlags);
+                break;
+
+            default:
+                String errorMsg = "Panic! Unexpected object while creating target parcel: " +
+                    parcelObject;
+                Log.d(TAG, errorMsg);
+                throw new UnsupportedOperationException(errorMsg);
+            }
+
+            originalPos = parcelObject.mEndPos;
+            objectsToWrite.removeFirst();
+        }
+
+        if (originalPos < sourceParcel.dataSize()) {
+            int length = sourceParcel.dataSize() - originalPos;
+            targetParcel.appendFrom(sourceParcel, originalPos, length);
+        }
+    }
+
+    private void perturbObject(String targetPkg, PluginProxy pluginProxy,
+            PerturbableObject perturbableObject) {
+        Parcelable parcelable = perturbableObject.mParcelable;
+
+        switch (perturbableObject.mPerturbableType) {
+        case LOCATION:
+            Location location = (Location) parcelable;
+            IPluginLocationInterposer locInterposer =
+                (IPluginLocationInterposer) pluginProxy.getLocationInterposer();
+            if (locInterposer != null) {
+                try {
+                    location = locInterposer.modifyLocation(targetPkg, location);
+                    perturbableObject.setPerturbedObject(location);
+                } catch (RemoteException ex) {
+                    Log.d(TAG, "RemoteException while modifying location for " +
+                          targetPkg);
+                }
+            }
+            break;
+
+        default:
+            Log.d(TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType
+                  + ", perturbableObject: " + perturbableObject
+                  + ". Writing original ...");
+            break;
+        }
+    }
+
+    private Parcel perturbAllDataImpl(String targetPkg, Parcel sourceParcel, Parcel targetParcel) {
+
+        if (!sourceParcel.hasPerturbables()) {
             return null;
         }
 
@@ -129,74 +197,43 @@ public class PermissionsPluginManager {
         }
 
         if (DEBUG) {
-            Log.d(TAG, "Proceeding to perturb data for " + targetPkg +
-                  ". ModifyOriginal: " + modifyOriginal);
+            Log.d(TAG, "Proceeding to perturb data for " + targetPkg);
         }
 
-        Parcel perturbedParcel = Parcel.obtain();
-        originalParcel.setIgnorePerturbables();
+        ArrayDeque<ParcelObject> recordedObjects = sourceParcel.getRecordedObjects();
+        ArrayDeque<ParcelObject> objectsToWrite = new ArrayDeque<>();
+
+        sourceParcel.stopRecording();
 
         int originalParcelPos = 0;
 
-        for (PerturbableObject perturbableObject : perturbables) {
+        for (ParcelObject recordedObject : recordedObjects) {
+            switch (recordedObject.mObjectType) {
+            case ParcelObject.BINDER_OBJECT:
+                objectsToWrite.add(recordedObject);
+                break;
 
-            int dataStartPos = perturbableObject.parcelStartPos;
-            int dataEndPos = perturbableObject.parcelEndPos;
-
-            if (originalParcelPos < dataStartPos) {
-                int length = dataStartPos - originalParcelPos;
-                perturbedParcel.appendFrom(originalParcel, originalParcelPos, length);
-            }
-
-            Parcelable object = perturbableObject.object;
-            switch (perturbableObject.type) {
-            case LOCATION:
-                Location location = (Location) object;
-                IPluginLocationInterposer locInterposer =
-                    (IPluginLocationInterposer) pluginProxy.getLocationInterposer();
-
-                if (locInterposer != null) {
-                    try {
-                        location = locInterposer.modifyLocation(targetPkg, location);
-                    } catch (RemoteException ex) {
-                        if (DEBUG) {
-                            Log.d(TAG, "RemoteException while modifying location for " +
-                                  targetPkg);
-                        }
-                    }
-                }
-
-                object = location;
+            case ParcelObject.PERTURBABLE_OBJECT:
+                PerturbableObject perturbableObject =
+                    (PerturbableObject) recordedObject;
+                perturbObject(targetPkg, pluginProxy, perturbableObject);
+                objectsToWrite.add(perturbableObject);
                 break;
 
             default:
-                Log.d(TAG, "Unhandled parcelable: " + perturbableObject.type +
-                      ". Writing original ...");
-                break;
+                String errorMsg = "Panic! Unexpected recorded object type encountered: " +
+                    recordedObject;
+                Log.d(TAG, errorMsg);
+                throw new UnsupportedOperationException(errorMsg);
             }
-
-            object.writeToParcel(perturbedParcel, perturbableObject.writeFlags);
-            originalParcelPos = dataEndPos;
         }
 
-        if (originalParcelPos < originalParcel.dataSize()) {
-            int length = originalParcel.dataSize() - originalParcelPos;
-            perturbedParcel.appendFrom(originalParcel, originalParcelPos, length);
+        if (targetParcel == null) {
+            targetParcel = Parcel.obtain();
         }
 
-        Parcel parcelToReturn = null;
-
-        if (modifyOriginal) {
-            originalParcel.setDataPosition(0);
-            originalParcel.appendFrom(perturbedParcel, 0, perturbedParcel.dataPosition());
-            perturbedParcel.recycle();
-
-            parcelToReturn = originalParcel;
-        } else {
-            parcelToReturn = perturbedParcel;
-        }
-
-        return parcelToReturn;
+        copySourceToTargetParcel(sourceParcel, targetParcel, objectsToWrite);
+        return targetParcel;
     }
 
     private static PermissionsPluginManager getInstance() {
@@ -212,23 +249,24 @@ public class PermissionsPluginManager {
     /**
      * {@hide}
      */
-    public static Parcel perturbAllData(String targetPkg, Parcel originalParcel) {
+    public static Parcel perturbAllData(String targetPkg, Parcel sourceParcel) {
 
         if (targetPkg == null || targetPkg.length() == 0) {
             return null;
         }
 
-        return getInstance().perturbAllDataImpl(targetPkg, originalParcel, false);
+        return getInstance().perturbAllDataImpl(targetPkg, sourceParcel, null);
     }
 
     /**
      * {@hide}
      */
-    public static Parcel perturbAllData(int callingUid, Parcel originalParcel) {
+    public static void fixupTargetParcel(int callingUid, Parcel sourceParcel, Parcel targetParcel) {
 
-        ArrayDeque<PerturbableObject> perturbables = originalParcel.getPerturbables();
-        if (perturbables == null || perturbables.size() == 0) {
-            return null;
+        if (!sourceParcel.hasPerturbables()) {
+            copySourceToTargetParcel(sourceParcel, targetParcel,
+                sourceParcel.getRecordedObjects());
+            return;
         }
 
         PermissionsPluginManager local = getInstance();
@@ -242,15 +280,22 @@ public class PermissionsPluginManager {
                 targetPkg = ActivityThread.getPackageManager().getNameForUid(callingUid);
             } catch (RemoteException ex) {
                 Log.d(TAG, "Could not retrieve package name of uid " + callingUid + ". RemoteException: " + ex);
-                return null;
+                copySourceToTargetParcel(sourceParcel, targetParcel,
+                    sourceParcel.getRecordedObjects());
+                return;
             }
 
             local.uidsToPackage.put(callingUid, targetPkg);
         }
 
-        return local.perturbAllDataImpl(targetPkg, originalParcel, true);
+        Parcel val = local.perturbAllDataImpl(targetPkg, sourceParcel, targetParcel);
+        if (val == null) {
+            // The attempt to perturb data was aborted for some reason, so we
+            // must copy all recorded objects from the source parcel.
+            copySourceToTargetParcel(sourceParcel, targetParcel,
+                sourceParcel.getRecordedObjects());
+        }
     }
-
 
     // Retrieve list of active permissions plugin for a given package    
     private List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){

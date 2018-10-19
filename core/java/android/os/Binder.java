@@ -692,6 +692,14 @@ public class Binder implements IBinder {
             int flags) {
         Parcel data = Parcel.obtain(dataObj);
         Parcel reply = Parcel.obtain(replyObj);
+
+        /**
+         * Unfortunately, we have to write the transaction reply to a temporary
+         * parcel before copying it to the reply parcel, just in case a parcel
+         * contains *both* binder and perturbable objects.
+         */
+        Parcel temp = Parcel.obtain();
+
         // theoretically, we should call transact, which will call onTransact,
         // but all that does is rewind it, and we just got these from an IPC,
         // so we'll just call it directly.
@@ -703,7 +711,7 @@ public class Binder implements IBinder {
             if (tracingEnabled) {
                 Trace.traceBegin(Trace.TRACE_TAG_ALWAYS, getClass().getName() + ":" + code);
             }
-            res = onTransact(code, data, reply, flags);
+            res = onTransact(code, data, temp, flags);
         } catch (RemoteException|RuntimeException e) {
             if (LOG_RUNTIME_EXCEPTION) {
                 Log.w(TAG, "Caught a RuntimeException from the binder stub implementation.", e);
@@ -717,6 +725,8 @@ public class Binder implements IBinder {
             } else {
                 reply.setDataPosition(0);
                 reply.writeException(e);
+                temp.recycle();
+                temp = null;
             }
             res = true;
         } finally {
@@ -724,7 +734,15 @@ public class Binder implements IBinder {
                 Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
             }
         }
-        PermissionsPluginManager.perturbAllData(getCallingUid(), reply);
+
+        if (temp != null) {
+            // Fixup the reply parcel by copying into it data from the temporary
+            // parcel. During this process, perturb all data.
+            PermissionsPluginManager.fixupTargetParcel(getCallingUid(), temp, reply);
+            temp.recycle();
+            temp = null;
+        }
+
         checkParcel(this, code, reply, "Unreasonably large binder reply buffer");
         reply.recycle();
         data.recycle();
