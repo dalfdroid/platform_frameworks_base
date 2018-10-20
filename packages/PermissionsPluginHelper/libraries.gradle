@@ -40,7 +40,6 @@ android {
 
     buildTypes {
         baseAPI {}
-        locationAPI {}
     }
 
     sourceSets {
@@ -61,11 +60,6 @@ android {
             setRoot 'src/main'
         }
     }
-}
-
-dependencies {
-    // Dependencies for the locationAPI configuration.
-    locationAPICompileOnly fileTree(dir: 'build/libs/', include: ['PermissionsPluginLibrary-baseAPI.jar'])
 }
 
 // Assemble the JAR file for the base API.
