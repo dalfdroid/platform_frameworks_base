@@ -776,14 +776,48 @@ public class ApplicationPackageManager extends PackageManager {
 
     /** @hide */    
     @Override
-    @SuppressWarnings("unchecked")  
-    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){          
+    @SuppressWarnings("unchecked")        
+    public boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset){
         try {
-            return mPM.setTargetPackagesForPlugin(pluginPackage, targetPackages);
+            return mPM.addTargetPackagesForPlugin(pluginPackage,targetPackages,reset);            
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }           
     }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")        
+    public boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages){
+        try {
+            return mPM.removeTargetPackagesForPlugin(pluginPackage,targetPackages);            
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }           
+    }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")        
+    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
+        try {
+            return mPM.addTargetAPIsForPlugin(pluginPackage,targetAPIs,reset);            
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }           
+    }
+
+    /** @hide */    
+    @Override
+    @SuppressWarnings("unchecked")        
+    public boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs){
+        try {
+            return mPM.removeTargetAPIsForPlugin(pluginPackage,targetAPIs);            
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }  
+    }
+
 
     @SuppressWarnings("unchecked")
     @Override

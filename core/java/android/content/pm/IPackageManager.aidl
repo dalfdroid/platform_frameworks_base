@@ -176,8 +176,17 @@ interface IPackageManager {
     // Set activation status of the permissions plugin
     boolean setActivationStatusForPermissionsPlugin(in String pluginPackage, in boolean isActive);
 
-    // Set target packages of the given plugin
-    boolean setTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages);
+    // Add target packages of the plugin
+    boolean addTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages, in boolean reset);
+
+    // Remove target packages of the plugin
+    boolean removeTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages);
+
+    // Add target apis of the plugin
+    boolean addTargetAPIsForPlugin(in String pluginPackage, in List<String> targetAPIs, in boolean reset);
+
+    // Remove target apis of the plugin
+    boolean removeTargetAPIsForPlugin(in String pluginPackage, in List<String> targetAPIs);
 
     /**
      * This implements getInstalledPackages via a "last returned row"

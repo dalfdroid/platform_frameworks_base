@@ -3208,6 +3208,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     Slog.i(TAG_HEIMDALL,"Permissions plugin loaded from db. Package name: " + 
                         plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                         plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs + 
+                        "target APIS: " + plugin.targetAPIs + 
                         " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
                 }                         
             }else{
@@ -3258,6 +3259,7 @@ public class PackageManagerService extends IPackageManager.Stub
                 Slog.i(TAG_HEIMDALL,"Permissions plugin parsed. Package name: " + 
                     plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                     plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs +
+                    "target APIS: " + plugin.targetAPIs + 
                     " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
             }
         }
@@ -3365,51 +3367,50 @@ public class PackageManagerService extends IPackageManager.Stub
         }
     }
 
+
     /**
      * Activate permissions plugin.
      * 
      * @param pluginPackage package name of the plugin.
      * @param isActive activation status.
-     * @return True if the activation status is succsefully set otherwise false.
+     * @return True if the activation status is successfully set otherwise false.
      * @hide
      */
     @Override
     public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive) {
-        if(DEBUG_HEIMDALL){
-            Slog.i(TAG_HEIMDALL,"setActivationStatusForPermissionsPlugin pluginPackage: " + pluginPackage + " isActive: "+ isActive);
-        }
-
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-            if(null != plugin){
-                // Update plugin
-                plugin.isActive = isActive;
-
-                // Update plugin db
-                int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
-
-                if(DEBUG_HEIMDALL){
-                    Slog.d(TAG_HEIMDALL,"plugin with package name " + pluginPackage + " update status: " + updatedRows);
-                }
-
-                return (updatedRows==1);         
+            if(null == plugin){
+                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                return false;           
             }
-        }
 
-        Slog.d(TAG_HEIMDALL,"Failed to find plugin with package name " + pluginPackage);
-        return false;
+            // Update plugin
+            plugin.isActive = isActive;
+
+            // Update plugin db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"setActivationStatusForPermissionsPlugin " + pluginPackage + " update status: " + updatedRows);
+            }
+
+            return (updatedRows==1);         
+        }
     }
 
 
-    /** 
-     * Set target packages of the given plugin.
+    /**
+     * Add target packages of the plugin.
+     * 
      * @param pluginPackage Package name of the plugin.
-     * @param targetPackages List of target packages.
-     * @return True if the operation is successful otherwise false.
+     * @param targetPackages List of target packages to add.
+     * @param reset Flag to clear target package list before adding new target packages.
+     * @return True if the packages are added successfully, otherwise false.
      * @hide
      */
     @Override
-    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages) {
+    public boolean addTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages, boolean reset){
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
@@ -3418,24 +3419,154 @@ public class PackageManagerService extends IPackageManager.Stub
             }
 
             // Clear the old target package list
-            plugin.targetPackages.clear();
-
-            // Add target packages if they are in the supported packages
-            if(plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES)){
-                plugin.targetPackages.addAll(targetPackages);
-            }else{
-                for(String packageName : targetPackages){
-                    if(plugin.supportedPackages.contains(packageName)){
-                        plugin.targetPackages.add(packageName);
-                    }
+            if(reset){
+                // Before removing target packages 
+                // we need to remove their mapping to the plugin
+                for(String packageName : plugin.targetPackages){
+                    mPackageToPermissionsPlugins.get(packageName).remove(plugin.packageName);
                 }
+                plugin.targetPackages.clear();  
             }
+            
+            // Add target packages if they are in the supported packages
+            for(String packageName : targetPackages){
+                if(plugin.supportedPackages.contains(packageName) ||
+                    plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES)){
+
+                    plugin.targetPackages.add(packageName);
+
+                    // Update package to plugin map
+                    if(!mPackageToPermissionsPlugins.containsKey(packageName)){
+                        mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
+                    }
+                    mPackageToPermissionsPlugins.get(packageName).add(plugin.packageName);
+                }
+            }         
 
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"addTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
+            }
+
             return (updatedRows == 1);
         }
     }
+
+
+    /**
+     * Remove target packages of the plugin.
+     * 
+     * @param pluginPackage Package name of the plugin.
+     * @param targetPackages List of target packages to remove.
+     * @return True if the packages are removed successfully, otherwise false.
+     * @hide
+     */
+    @Override
+    public boolean removeTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){
+        synchronized(mPackages){
+            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+            if(null == plugin){
+                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                return false;           
+            }
+
+            // Remove target packages and mapping 
+            // if they are indeed in the target package list
+            for(String packageName : targetPackages){
+                if(plugin.targetPackages.contains(packageName)){
+                    plugin.targetPackages.remove(packageName);
+                    mPackageToPermissionsPlugins.get(packageName).remove(plugin.packageName);
+                }
+            }         
+
+            // Update plugin in db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"removeTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
+            }
+
+
+            return (updatedRows == 1);
+        }
+    }
+
+    /**
+     * Add target APIs of the plugin.
+     * 
+     * @param pluginPackage Package name of the plugin.
+     * @param targetAPIs List of target APIs to add.
+     * @param reset Flag to clear target APIs list before adding new target APIs.
+     * @return True if the APIs are added successfully, otherwise false.
+     * @hide
+     */
+    @Override
+    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
+        synchronized(mPackages){
+            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+            if(null == plugin){
+                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                return false;           
+            }
+
+            // Clear the old target api list
+            if(reset){
+                plugin.targetAPIs.clear();  
+            }
+            
+            // Add target apis if they are in the supported apis
+            for(String api : targetAPIs){
+                if(plugin.supportedAPIs.contains(api)){
+                    plugin.targetAPIs.add(api);
+                }
+            }         
+
+            // Update plugin in db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"addTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
+            }
+
+            return (updatedRows == 1);
+        }
+    }
+
+    /**
+     * Remove target APIs of the plugin.
+     * 
+     * @param pluginPackage Package name of the plugin.
+     * @param targetAPIs List of target APIs to remove.
+     * @return True if the APIs are removed successfully, otherwise false.
+     * @hide
+     */
+    @Override
+    public boolean removeTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs){
+        synchronized(mPackages){
+            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
+            if(null == plugin){
+                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                return false;           
+            }
+
+            // Remove target apis
+            for(String api : targetAPIs){
+                plugin.targetAPIs.remove(api);
+            }         
+
+            // Update plugin in db
+            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
+
+            if(DEBUG_HEIMDALL){
+                Slog.d(TAG_HEIMDALL,"removeTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
+            }
+
+            return (updatedRows == 1);
+        }
+    }
+
 
     /**
      * Check if the given package is trusted by matching package name

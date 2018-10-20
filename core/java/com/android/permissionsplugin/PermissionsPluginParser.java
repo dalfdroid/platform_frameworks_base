@@ -67,20 +67,15 @@ public class PermissionsPluginParser {
 
             // Parse supported packages
             JSONArray supportedPackages = root.getJSONArray(JSON_KEY_SUPPORTED_PKGS);
-            plugin.supportedPackages = new ArrayList<>();
             for(int i=0; i<supportedPackages.length(); i++){
                 plugin.supportedPackages.add(supportedPackages.getString(i));
             }
 
             // Parse supported APIs
             JSONArray supportedAPIs = root.getJSONArray(JSON_KEY_INTERPOSED_APIS);
-            plugin.supportedAPIs = new ArrayList<>();
             for(int i=0; i<supportedAPIs.length(); i++){
                 plugin.supportedAPIs.add(supportedAPIs.getString(i));
             }
-
-            // By default target packages are same as supported packages
-            plugin.targetPackages = new ArrayList<>(plugin.supportedPackages);
 
         }catch (Exception e){
             e.printStackTrace();

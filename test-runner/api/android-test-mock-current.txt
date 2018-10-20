@@ -226,6 +226,8 @@ package android.test.mock {
     method public boolean addPermission(android.content.pm.PermissionInfo);
     method public boolean addPermissionAsync(android.content.pm.PermissionInfo);
     method public void addPreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
+    method public boolean addTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
+    method public boolean addTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
     method public boolean canRequestPackageInstalls();
     method public java.lang.String[] canonicalToCurrentPackageNames(java.lang.String[]);
     method public int checkPermission(java.lang.String, java.lang.String);
@@ -379,6 +381,8 @@ package android.test.mock {
     method public void removeOnPermissionsChangeListener(android.content.pm.PackageManager.OnPermissionsChangedListener);
     method public void removePackageFromPreferred(java.lang.String);
     method public void removePermission(java.lang.String);
+    method public boolean removeTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>);
+    method public boolean removeTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>);
     method public void replacePreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
     method public android.content.pm.ResolveInfo resolveActivity(android.content.Intent, int);
     method public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent, int, int);
@@ -395,7 +399,6 @@ package android.test.mock {
     method public void setInstallerPackageName(java.lang.String, java.lang.String);
     method public boolean setInstantAppCookie(byte[]);
     method public java.lang.String[] setPackagesSuspendedAsUser(java.lang.String[], boolean, int);
-    method public boolean setTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>);
     method public void setUpdateAvailable(java.lang.String, boolean);
     method public boolean shouldShowRequestPermissionRationale(java.lang.String);
     method public void unregisterMoveCallback(android.content.pm.PackageManager.MoveCallback);

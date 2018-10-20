@@ -5,7 +5,7 @@ import android.os.Parcelable;
 
 import java.util.ArrayList;
 import java.util.List;
-    
+
 public class PermissionsPlugin implements Parcelable{
 
     public static final String ALL_PACKAGES = "*";
@@ -30,13 +30,12 @@ public class PermissionsPlugin implements Parcelable{
     // must be a subset of the supportedPackages
     public ArrayList<String> targetPackages;
 
+    // APIs selected by user for this plugin
+    // must be a subset of the supportedAPIs
+    public ArrayList<String> targetAPIs;
+
     // Flag to check if plugin is active
     public Boolean isActive;
-
-
-   // // APIs selected by user for this plugin
-   // // must be a subset of the supportedAPIs
-   // public ArrayList<String> targetAPIs;
 
     public PermissionsPlugin(String packageName){
         this.packageName = packageName;
@@ -44,6 +43,12 @@ public class PermissionsPlugin implements Parcelable{
         // Set default values
         id = -1;
         isActive = false;
+
+        // Initialize data
+        supportedPackages = new ArrayList<>();
+        supportedAPIs = new ArrayList<>();
+        targetPackages = new ArrayList<>();
+        targetAPIs = new ArrayList<>();
     }
 
     @Override
@@ -55,19 +60,19 @@ public class PermissionsPlugin implements Parcelable{
         public PermissionsPlugin createFromParcel(Parcel in) {
             return new PermissionsPlugin(in);
         }
-
         public PermissionsPlugin[] newArray(int size) {
             return new PermissionsPlugin[size];
         }
     };
 
-    public PermissionsPlugin(Parcel dest) { 
+    public PermissionsPlugin(Parcel dest) {
         id = dest.readLong();
         packageName = dest.readString();
         proxyClass = dest.readString();
         supportedPackages = dest.createStringArrayList();
         supportedAPIs = dest.createStringArrayList();
         targetPackages = dest.createStringArrayList();
+        targetAPIs = dest.createStringArrayList();
         isActive = (dest.readInt() == 1);
     }
 
@@ -79,6 +84,7 @@ public class PermissionsPlugin implements Parcelable{
         dest.writeStringList(supportedPackages);
         dest.writeStringList(supportedAPIs);
         dest.writeStringList(targetPackages);
+        dest.writeStringList(targetAPIs);
         dest.writeInt(isActive ? 1 : 0);
     }
 
@@ -87,5 +93,5 @@ public class PermissionsPlugin implements Parcelable{
     public int describeContents() {
         return 0;
     }
-    
+
 }

@@ -51,6 +51,9 @@ public class PermissionsPluginDb{
         // Column name for the target packages of the plugin
         public static final String COLUMN_NAME_TARGET_PACKAGES = "target_packages";
 
+        // Column name for the target APIs of the plugin
+        public static final String COLUMN_NAME_TARGET_APIS = "target_apis";
+
         // Column name for the active status of plugin stored as integer
         // 1 - active, 0 - inactive
         public static final String COLUMN_NAME_IS_ACTIVE = "is_active";
@@ -81,6 +84,7 @@ public class PermissionsPluginDb{
                 PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " TEXT," + 
                 PluginEntry.COLUMN_NAME_SUPPORTED_APIS + " TEXT," + 
                 PluginEntry.COLUMN_NAME_TARGET_PACKAGES + " TEXT," +                 
+                PluginEntry.COLUMN_NAME_TARGET_APIS + " TEXT," +                                 
                 PluginEntry.COLUMN_NAME_IS_ACTIVE + " INTEGER NOT NULL)";
             db.execSQL(SQL_CREATE_PLUGIN_TABLE);
 
@@ -133,6 +137,7 @@ public class PermissionsPluginDb{
                 int supportePkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
                 int supporteAPIIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_APIS);
                 int targetPkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_TARGET_PACKAGES);
+                int targetAPIIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_TARGET_APIS);
                 int isActiveIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_IS_ACTIVE);        
 
                 while(cursor.moveToNext()){
@@ -153,6 +158,10 @@ public class PermissionsPluginDb{
                     // Parse target packages
                     String targetPackages = cursor.getString(targetPkgIndex);
                     plugin.targetPackages = new ArrayList<String>(Arrays.asList(targetPackages.split(",")));
+
+                    // Parse target apis
+                    String targetAPIs = cursor.getString(targetAPIIndex);
+                    plugin.targetAPIs = new ArrayList<String>(Arrays.asList(targetAPIs.split(",")));
 
                     plugin.isActive = cursor.getInt(isActiveIndex)==1?true:false;
 
@@ -198,6 +207,9 @@ public class PermissionsPluginDb{
 
             // Put target packages as a string in the db
             values.put(PluginEntry.COLUMN_NAME_TARGET_PACKAGES, String.join(",",plugin.targetPackages));
+
+            // Put target apis as a string in the db
+            values.put(PluginEntry.COLUMN_NAME_TARGET_APIS, String.join(",",plugin.targetAPIs));
 
             values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
 
@@ -276,6 +288,9 @@ public class PermissionsPluginDb{
 
             // Put target packages as a string in the db
             values.put(PluginEntry.COLUMN_NAME_TARGET_PACKAGES, String.join(",",plugin.targetPackages));
+
+            // Put target apis as a string in the db
+            values.put(PluginEntry.COLUMN_NAME_TARGET_APIS, String.join(",",plugin.targetAPIs));
 
             values.put(PluginEntry.COLUMN_NAME_IS_ACTIVE, plugin.isActive?1:0);
 

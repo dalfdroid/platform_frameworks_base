@@ -225,7 +225,25 @@ public class MockPackageManager extends PackageManager {
 
     /** @hide */
     @Override
-    public boolean setTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){
+    public boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs){
         throw new UnsupportedOperationException();
     }
 
