@@ -579,6 +579,12 @@ public final class Parcel {
 
     /** @hide */
     public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
+        startPerturbableObject(type, object, writeFlags, null);
+    }
+
+    /** @hide */
+    public final void startPerturbableObject(Perturbable type, Parcelable object,
+            int writeFlags, Object metadata) {
         if (mStopRecording) {
             return;
         }
@@ -588,7 +594,7 @@ public final class Parcel {
         }
 
         PerturbableObject perturbableObject =
-            new PerturbableObject(type, object, dataPosition(), writeFlags);
+            new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
 
         mPerturbablesInProgress.add(perturbableObject);
     }

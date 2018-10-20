@@ -19,12 +19,21 @@ public class PerturbableObject extends ParcelObject {
     /** The perturbed parcel. */
     public Parcelable mPerturbed;
 
+    /** Metadata about the original parcelable object. */
+    public Object mMetadata;
+
     public PerturbableObject(Perturbable type, Parcelable object, int startPos,
             int writeFlags) {
+        this(type, object, startPos, writeFlags, /** metadata */ null);
+    }
+
+    public PerturbableObject(Perturbable type, Parcelable object, int startPos,
+            int writeFlags, Object metadata) {
         super(object, startPos,ParcelObject.PERTURBABLE_OBJECT);
         mPerturbableType = type;
         mParcelable = object;
         mWriteFlags = writeFlags;
+        mMetadata = metadata;
     }
 
     public void setPerturbedObject(Parcelable perturbed) {
