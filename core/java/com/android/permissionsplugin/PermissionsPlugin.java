@@ -10,6 +10,9 @@ public class PermissionsPlugin implements Parcelable{
 
     public static final String ALL_PACKAGES = "*";
 
+    // Constants for APIs supported by plugin
+    public static final String PLUGIN_API_LOCATION = "location";
+
     // Row id of this plugin in plugin db
     public long id;
 

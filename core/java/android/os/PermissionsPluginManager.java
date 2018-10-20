@@ -155,7 +155,7 @@ public class PermissionsPluginManager {
                 IPluginLocationInterposer locInterposer =
                     (IPluginLocationInterposer) pluginProxy.getLocationInterposer();
 
-                if (locInterposer != null) {
+                if (locInterposer != null && plugin.targetAPIs.contains(PermissionsPlugin.PLUGIN_API_LOCATION)) {
                     try {
                         location = locInterposer.modifyLocation(targetPkg, location);
                     } catch (RemoteException ex) {
