@@ -153,9 +153,11 @@ public class PermissionsPluginManager {
                 try {
                     location = locInterposer.modifyLocation(targetPkg, location);
                     perturbableObject.setPerturbedObject(location);
-                } catch (RemoteException ex) {
-                    Log.d(TAG, "RemoteException while modifying location for " +
-                          targetPkg);
+                } catch (Exception ex) {
+                    Log.d(TAG, "Encountered an exception while modifying location for "
+                          + targetPkg + " with plugin " + pluginProxy.getPackage()
+                          + ". exception: " + ex
+                          + ", message: " + ex.getMessage());
                 }
             }
             break;
@@ -184,12 +186,14 @@ public class PermissionsPluginManager {
                     if (perturbedWindow != null) {
                         perturbableObject.setPerturbedObject(perturbedWindow);
                     }
-                } catch (RemoteException ex) {
-                    Log.d(TAG, "RemoteException while modifying contact for " + targetPkg);
+                } catch (Exception ex) {
+                    Log.d(TAG, "Encountered an exception while modifying contact for "
+                          + targetPkg + " with plugin " + pluginProxy.getPackage()
+                          + ". exception: " + ex
+                          + ", message: " + ex.getMessage());
                 }
             }
             break;
-
 
         default:
             Log.d(TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType

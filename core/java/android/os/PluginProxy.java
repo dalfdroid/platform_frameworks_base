@@ -171,4 +171,8 @@ public class PluginProxy {
     public Object getContactsInterposer() {
         return mContactsInterposer;
     }
+
+    public String getPackage() {
+        return mPackage;
+    }
 }
