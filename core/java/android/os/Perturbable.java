@@ -1,5 +1,7 @@
 package android.os;
 
+import android.net.Uri;
+
 /**
  * An enum of perturbable object types.
  *
@@ -7,5 +9,18 @@ package android.os;
  */
 public enum Perturbable {
     /** Instances of the {@link android.location.Location} class. */
-    LOCATION;
+    LOCATION,
+
+    /** Instances of the {@link android.database.CursorWindow} class. */
+    CONTACTS;
+
+    public static Perturbable getReturnTypeFor(Uri url) {
+        if (url != null) {
+            if (url.toString().contains("contacts")) {
+                return Perturbable.CONTACTS;
+            }
+        }
+
+        return null;
+    }
 }

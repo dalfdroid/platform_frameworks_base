@@ -1,9 +1,11 @@
 package android.os;
 
 import android.app.ActivityThread;
-import android.util.Log;
+import android.database.BulkCursorDescriptor;
+import android.database.CursorWindow;
 import android.location.Location;
-
+import android.util.Log;
+import android.net.Uri;
 import android.content.pm.ParceledListSlice;
 
 import com.android.permissionsplugin.PermissionsPlugin;
@@ -157,6 +159,37 @@ public class PermissionsPluginManager {
                 }
             }
             break;
+
+        case CONTACTS:
+
+            CursorWindow window = (CursorWindow) parcelable;
+            IPluginContactsInterposer contactsInterposer =
+                (IPluginContactsInterposer) pluginProxy.getContactsInterposer();
+
+            PerturbableObject.QueryMetadata metadata =
+                (PerturbableObject.QueryMetadata) perturbableObject.mMetadata;
+
+            if (metadata == null) {
+                Log.d(TAG, "Metadata is not supported to be null for contacts. Breaking!");
+                break;
+            }
+
+            if (contactsInterposer != null) {
+
+                try {
+                    CursorWindow perturbedWindow = contactsInterposer.modifyData
+                        (targetPkg, metadata.url, metadata.projection,
+                         metadata.queryArgs, window, metadata.columnNames, metadata.count);
+
+                    if (perturbedWindow != null) {
+                        perturbableObject.setPerturbedObject(perturbedWindow);
+                    }
+                } catch (RemoteException ex) {
+                    Log.d(TAG, "RemoteException while modifying contact for " + targetPkg);
+                }
+            }
+            break;
+
 
         default:
             Log.d(TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType

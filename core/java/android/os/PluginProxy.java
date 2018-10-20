@@ -8,6 +8,7 @@ import android.content.ServiceConnection;
 import android.util.Log;
 
 import android.os.IPluginService;
+import android.os.IPluginContactsInterposer;
 import android.os.IPluginLocationInterposer;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class PluginProxy {
     private static final String TAG = "heimdall";
 
     private static final String INTERPOSER_LOCATION = "location";
+    private static final String INTERPOSER_CONTACTS = "contacts";
 
     private final String mPackage;
     private final List<String> mInterposers;
@@ -30,6 +32,7 @@ public class PluginProxy {
     private ServiceConnection mConnection = null;
     private PluginServiceProxy mService = null;
     private IPluginLocationInterposer mLocationInterposer = null;
+    private IPluginContactsInterposer mContactsInterposer = null;
 
     private boolean mConnecting = false;
     private boolean mConnected = false;
@@ -91,17 +94,24 @@ public class PluginProxy {
 
     private void retrieveInterposers() {
         for (String interposer : mInterposers) {
-            if (interposer.equals(INTERPOSER_LOCATION)) {
-                try {
+            try {
+                if (interposer.equals(INTERPOSER_LOCATION)) {
                     IBinder binder = mService.getLocationInterposerRaw();
                     if (binder != null) {
                         binder = Binder.allowBlocking(binder);
                         mLocationInterposer =
                             IPluginLocationInterposer.Stub.asInterface(binder);
                     }
-                } catch (RemoteException ex) {
-                    Log.d(TAG, "Could not get location interposer from plugin service " + mPackage);
+                } else if (interposer.equals(INTERPOSER_CONTACTS)) {
+                    IBinder binder = mService.getContactsInterposerRaw();
+                    if (binder != null) {
+                        binder = Binder.allowBlocking(binder);
+                        mContactsInterposer =
+                            IPluginContactsInterposer.Stub.asInterface(binder);
+                    }
                 }
+            } catch (RemoteException ex) {
+                Log.d(TAG, "Could not get " + interposer + " interposer from plugin service " + mPackage);
             }
         }
     }
@@ -156,5 +166,9 @@ public class PluginProxy {
         // of Object in this method. However, doing so results in a weird
         // compile failure. Investigate and fix.
         return mLocationInterposer;
+    }
+
+    public Object getContactsInterposer() {
+        return mContactsInterposer;
     }
 }

@@ -21,9 +21,11 @@ import android.content.res.AssetFileDescriptor;
 import android.database.BulkCursorDescriptor;
 import android.database.BulkCursorToCursorAdaptor;
 import android.database.Cursor;
+import android.database.CursorWindow;
 import android.database.CursorToBulkCursorAdaptor;
 import android.database.DatabaseUtils;
 import android.database.IContentObserver;
+import android.database.CrossProcessCursor;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
@@ -32,10 +34,14 @@ import android.os.ICancellationSignal;
 import android.os.Parcel;
 import android.os.ParcelFileDescriptor;
 import android.os.Parcelable;
+import android.os.Perturbable;
+import android.os.PerturbableObject;
 import android.os.RemoteException;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * {@hide}
@@ -102,6 +108,7 @@ abstract public class ContentProviderNative extends Binder implements IContentPr
                     Cursor cursor = query(callingPkg, url, projection, queryArgs, cancellationSignal);
                     if (cursor != null) {
                         CursorToBulkCursorAdaptor adaptor = null;
+                        Perturbable type = Perturbable.getReturnTypeFor(url);
 
                         try {
                             adaptor = new CursorToBulkCursorAdaptor(cursor, observer,
@@ -113,6 +120,15 @@ abstract public class ContentProviderNative extends Binder implements IContentPr
 
                             reply.writeNoException();
                             reply.writeInt(1);
+
+                            if (type != null) {
+                                PerturbableObject.QueryMetadata metadata = new PerturbableObject.QueryMetadata();
+                                metadata.url = url;
+                                metadata.projection = projection;
+                                metadata.queryArgs = queryArgs;
+                                d.setPerturbable(type, metadata);
+                            }
+
                             d.writeToParcel(reply, Parcelable.PARCELABLE_WRITE_RETURN_VALUE);
                         } finally {
                             // Close cursor if an exception was thrown while constructing the adaptor.

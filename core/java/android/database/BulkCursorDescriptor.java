@@ -19,6 +19,9 @@ package android.database;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import android.os.Perturbable;
+import android.os.PerturbableObject;
+
 /**
  * Describes the properties of a {@link CursorToBulkCursorAdaptor} that are
  * needed to initialize its {@link BulkCursorToCursorAdaptor} counterpart on the client's end.
@@ -47,6 +50,9 @@ public final class BulkCursorDescriptor implements Parcelable {
     public int count;
     public CursorWindow window;
 
+    private Perturbable perturbableType;
+    private PerturbableObject.QueryMetadata metadata;
+
     @Override
     public int describeContents() {
         return 0;
@@ -60,7 +66,13 @@ public final class BulkCursorDescriptor implements Parcelable {
         out.writeInt(count);
         if (window != null) {
             out.writeInt(1);
+            if (perturbableType != null) {
+                out.startPerturbableObject(perturbableType, window, flags, metadata);
+            }
             window.writeToParcel(out, flags);
+            if (perturbableType != null) {
+                out.finishPerturbableObject();
+            }
         } else {
             out.writeInt(0);
         }
@@ -74,5 +86,13 @@ public final class BulkCursorDescriptor implements Parcelable {
         if (in.readInt() != 0) {
             window = CursorWindow.CREATOR.createFromParcel(in);
         }
+    }
+
+    public void setPerturbable(Perturbable type, PerturbableObject.QueryMetadata metadata) {
+        metadata.columnNames = columnNames;
+        metadata.count = count;
+
+        perturbableType = type;
+        this.metadata = metadata;
     }
 }

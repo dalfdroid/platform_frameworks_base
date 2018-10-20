@@ -59,6 +59,21 @@ public abstract class PluginService extends Binder implements IPluginService
 
                 return true;
             }
+
+        case TRANSACTION_getContactsInterposer:
+            {
+                data.enforceInterface(descriptor);
+                IPluginContactsInterposer _result = this.getContactsInterposer();
+                reply.writeNoException();
+
+                IBinder val = null;
+                if (_result != null) {
+                    val = _result.asBinder();
+                }
+                reply.writeStrongBinder(val);
+
+                return true;
+            }
         }
 
         return super.onTransact(code, data, reply, flags);
@@ -95,6 +110,14 @@ final class PluginServiceProxy implements IPluginService
         throw new RemoteException(errorMsg);
     }
 
+    @Override
+    public IPluginContactsInterposer getContactsInterposer() throws RemoteException
+    {
+        String errorMsg = "Use getContactsInterposerRaw() instead!";
+        Log.d(TAG, errorMsg);
+        throw new RemoteException(errorMsg);
+    }
+
     /**
      * Returns the raw IBinder of the location interposer of this
      * plugin. Transform it into the interface version manually.
@@ -118,4 +141,26 @@ final class PluginServiceProxy implements IPluginService
         return _result;
     }
 
+    /**
+     * Returns the raw IBinder of the contacts interposer of this
+     * plugin. Transform it into the interface version manually!
+     */
+    public IBinder getContactsInterposerRaw() throws RemoteException {
+        Parcel _data = Parcel.obtain();
+        Parcel _reply = Parcel.obtain();
+        IBinder _result;
+
+        try {
+            _data.writeInterfaceToken(descriptor);
+            mRemote.transact(TRANSACTION_getContactsInterposer, _data, _reply, 0);
+            _reply.readException();
+
+            _result = _reply.readStrongBinder();
+        }
+        finally {
+            _reply.recycle();
+            _data.recycle();
+        }
+        return _result;
+    }
 }

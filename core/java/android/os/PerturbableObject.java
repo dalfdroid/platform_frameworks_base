@@ -1,5 +1,7 @@
 package android.os;
 
+import android.net.Uri;
+
 /**
  * A record of an object written to a Parcel that needs to be perturbed.
  *
@@ -60,4 +62,12 @@ public class PerturbableObject extends ParcelObject {
             + ", mEndPos: " + mEndPos;
     }
 
+    /** {@hide} */
+    public static class QueryMetadata {
+        public Uri url;
+        public String[] projection;
+        public Bundle queryArgs;
+        public String[] columnNames;
+        public int count;
+    }
 }
