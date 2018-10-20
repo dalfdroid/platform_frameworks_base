@@ -158,17 +158,11 @@ public class PluginProxy {
         return mConnecting;
     }
 
-    /**
-     * {@hide}
-     */
-    public Object getLocationInterposer() {
-        // FIXME: It would be nice to return IPluginLocationInterposer instead
-        // of Object in this method. However, doing so results in a weird
-        // compile failure. Investigate and fix.
+    public IPluginLocationInterposer getLocationInterposer() {
         return mLocationInterposer;
     }
 
-    public Object getContactsInterposer() {
+    public IPluginContactsInterposer getContactsInterposer() {
         return mContactsInterposer;
     }
 

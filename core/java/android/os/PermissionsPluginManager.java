@@ -148,7 +148,7 @@ public class PermissionsPluginManager {
         case LOCATION:
             Location location = (Location) parcelable;
             IPluginLocationInterposer locInterposer =
-                (IPluginLocationInterposer) pluginProxy.getLocationInterposer();
+                pluginProxy.getLocationInterposer();
             if (locInterposer != null) {
                 try {
                     location = locInterposer.modifyLocation(targetPkg, location);
@@ -166,7 +166,7 @@ public class PermissionsPluginManager {
 
             CursorWindow window = (CursorWindow) parcelable;
             IPluginContactsInterposer contactsInterposer =
-                (IPluginContactsInterposer) pluginProxy.getContactsInterposer();
+                pluginProxy.getContactsInterposer();
 
             PerturbableObject.QueryMetadata metadata =
                 (PerturbableObject.QueryMetadata) perturbableObject.mMetadata;
