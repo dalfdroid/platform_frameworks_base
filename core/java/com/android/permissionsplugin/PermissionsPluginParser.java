@@ -20,7 +20,6 @@ public class PermissionsPluginParser {
     private static final String JSON_KEY_ROOT = "permissionsplugin";
     private static final String JSON_KEY_SUPPORTED_PKGS = "supportsPkg";
     private static final String JSON_KEY_INTERPOSED_APIS = "interposesOn";
-    private static final String JSON_KEY_PROXY_CLASS = "proxyMain";
 
     public PermissionsPluginParser(){
     }
@@ -61,9 +60,6 @@ public class PermissionsPluginParser {
             String rawJson = new String(buffer, "UTF-8");
             JSONObject json = new JSONObject(rawJson);
             JSONObject root = json.getJSONObject(JSON_KEY_ROOT);
-
-            // Parse proxy class
-            plugin.proxyClass = root.getString(JSON_KEY_PROXY_CLASS);
 
             // Parse supported packages
             JSONArray supportedPackages = root.getJSONArray(JSON_KEY_SUPPORTED_PKGS);

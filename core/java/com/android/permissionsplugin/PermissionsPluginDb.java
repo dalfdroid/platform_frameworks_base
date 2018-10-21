@@ -39,9 +39,6 @@ public class PermissionsPluginDb{
         // Column name for the plugin package stored as string
         public static final String COLUMN_NAME_PACKAGE_NAME = "package_name";
 
-        // Column name for the plugin package proxy clas
-        public static final String COLUMN_NAME_PROXY_CLASS = "proxy_class";
-
         // Column name for the packages supported by the plugin
         public static final String COLUMN_NAME_SUPPORTED_PACKAGES = "supported_packages";
 
@@ -80,7 +77,6 @@ public class PermissionsPluginDb{
                 "CREATE TABLE " + PluginEntry.TABLE_NAME + " (" +
                 PluginEntry._ID + " INTEGER PRIMARY KEY," +
                 PluginEntry.COLUMN_NAME_PACKAGE_NAME + " TEXT NOT NULL UNIQUE," +
-                PluginEntry.COLUMN_NAME_PROXY_CLASS + " TEXT," + 
                 PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " TEXT," + 
                 PluginEntry.COLUMN_NAME_SUPPORTED_APIS + " TEXT," + 
                 PluginEntry.COLUMN_NAME_TARGET_PACKAGES + " TEXT," +                 
@@ -133,7 +129,6 @@ public class PermissionsPluginDb{
                 // Get the index of the columns we are interested in
                 int idIndex = cursor.getColumnIndex(PluginEntry._ID);
                 int packageNameIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_PACKAGE_NAME);
-                int proxyClassIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_PROXY_CLASS);
                 int supportePkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
                 int supporteAPIIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_SUPPORTED_APIS);
                 int targetPkgIndex = cursor.getColumnIndex(PluginEntry.COLUMN_NAME_TARGET_PACKAGES);
@@ -145,7 +140,6 @@ public class PermissionsPluginDb{
                     PermissionsPlugin plugin = new PermissionsPlugin(packageName);
                     
                     plugin.id = cursor.getInt(idIndex);
-                    plugin.proxyClass = cursor.getString(proxyClassIndex);
                     
                     // Parse supported packages
                     String supportedPackages = cursor.getString(supportePkgIndex);
@@ -197,7 +191,6 @@ public class PermissionsPluginDb{
             ContentValues values = new ContentValues();
 
             values.put(PluginEntry.COLUMN_NAME_PACKAGE_NAME, plugin.packageName);
-            values.put(PluginEntry.COLUMN_NAME_PROXY_CLASS, plugin.proxyClass);
 
             // Put supported packages as a string in the db
             values.put(PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES, String.join(",",plugin.supportedPackages));
@@ -278,7 +271,6 @@ public class PermissionsPluginDb{
             ContentValues values = new ContentValues();
 
             values.put(PluginEntry.COLUMN_NAME_PACKAGE_NAME, plugin.packageName);
-            values.put(PluginEntry.COLUMN_NAME_PROXY_CLASS, plugin.proxyClass);
 
             // Put supported packages as a string in the db
             values.put(PluginEntry.COLUMN_NAME_SUPPORTED_PACKAGES, String.join(",",plugin.supportedPackages));

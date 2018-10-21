@@ -19,9 +19,6 @@ public class PermissionsPlugin implements Parcelable{
     // Package name of the plugin
     public String packageName;
 
-    // Main class of the plugin
-    public String proxyClass;
-
     // Packages (apps) supported by this plugin
     // '*' means all apps are supported
     public ArrayList<String> supportedPackages;
@@ -71,7 +68,6 @@ public class PermissionsPlugin implements Parcelable{
     public PermissionsPlugin(Parcel dest) {
         id = dest.readLong();
         packageName = dest.readString();
-        proxyClass = dest.readString();
         supportedPackages = dest.createStringArrayList();
         supportedAPIs = dest.createStringArrayList();
         targetPackages = dest.createStringArrayList();
@@ -83,7 +79,6 @@ public class PermissionsPlugin implements Parcelable{
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeLong(id);
         dest.writeString(packageName);
-        dest.writeString(proxyClass);
         dest.writeStringList(supportedPackages);
         dest.writeStringList(supportedAPIs);
         dest.writeStringList(targetPackages);

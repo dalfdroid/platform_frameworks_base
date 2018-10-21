@@ -3209,7 +3209,7 @@ public class PackageManagerService extends IPackageManager.Stub
                         plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                         plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs + 
                         "target APIS: " + plugin.targetAPIs + 
-                        " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
+                        " target packages: " + plugin.targetPackages);
                 }                         
             }else{
                 // We found newly installed package that is a permissions plugin.
@@ -3260,7 +3260,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                     plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs +
                     "target APIS: " + plugin.targetAPIs + 
-                    " target packages: " + plugin.targetPackages + " proxy main: " + plugin.proxyClass);
+                    " target packages: " + plugin.targetPackages);
             }
         }
     }
