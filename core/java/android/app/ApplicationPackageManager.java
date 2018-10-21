@@ -765,6 +765,17 @@ public class ApplicationPackageManager extends PackageManager {
 
     /** @hide */    
     @Override
+    @SuppressWarnings("unchecked")    
+    public List<String> getInstalledUntrustedPackages(){
+        try {
+            return mPM.getInstalledUntrustedPackages();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }        
+    }
+
+    /** @hide */    
+    @Override
     @SuppressWarnings("unchecked")        
     public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
         try {

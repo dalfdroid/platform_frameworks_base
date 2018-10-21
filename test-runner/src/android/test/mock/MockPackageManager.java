@@ -219,6 +219,12 @@ public class MockPackageManager extends PackageManager {
 
     /** @hide */
     @Override
+    public List<String> getInstalledUntrustedPackages(){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
     public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
         throw new UnsupportedOperationException();
     }

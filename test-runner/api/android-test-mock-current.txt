@@ -279,6 +279,7 @@ package android.test.mock {
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackages(int);
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackagesAsUser(int, int);
     method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getInstalledPermissionsPlugins();
+    method public java.util.List<java.lang.String> getInstalledUntrustedPackages();
     method public java.lang.String getInstallerPackageName(java.lang.String);
     method public java.lang.String getInstantAppAndroidId(java.lang.String, android.os.UserHandle);
     method public byte[] getInstantAppCookie();

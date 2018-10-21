@@ -3367,6 +3367,27 @@ public class PackageManagerService extends IPackageManager.Stub
         }
     }
 
+    /**
+     * Get the list of untrusted packages installed on the system.
+     * Note that it does not include the package if the package is a permissions plugin.
+     * @return List of untrusted package names.
+     * @hide
+     */
+    public List<String> getInstalledUntrustedPackages(){
+        List<String> packages = new ArrayList<>();
+        synchronized(mPackages){
+            for(PackageParser.Package p : mPackages.values()){
+                // Do not include permissions plugins
+                if(p.isPermissionsPlugin) continue;
+
+                // Do not include trusted packages
+                if(isPackageTrusted(p.packageName)) continue;
+
+                packages.add(p.packageName);
+            }
+            return packages;
+        }        
+    }
 
     /**
      * Activate permissions plugin.

@@ -188,6 +188,9 @@ interface IPackageManager {
     // Remove target apis of the plugin
     boolean removeTargetAPIsForPlugin(in String pluginPackage, in List<String> targetAPIs);
 
+    // Return list of unstruted packages installed
+    List<String> getInstalledUntrustedPackages();
+
     /**
      * This implements getInstalledPackages via a "last returned row"
      * mechanism that is not exposed in the API. This is to get around the IPC

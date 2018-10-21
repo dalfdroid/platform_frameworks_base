@@ -3266,6 +3266,10 @@ public abstract class PackageManager {
     /** {@hide} */    
     public abstract List<PermissionsPlugin> getInstalledPermissionsPlugins();
 
+    // Return list of untrusted packages installed
+    /** {@hide} */    
+    public abstract List<String> getInstalledUntrustedPackages();
+
     // Set activation status of the given permissions plugin.
     /** {@hide} */    
     public abstract boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive);
@@ -3285,6 +3289,7 @@ public abstract class PackageManager {
     // Remove target apis of the plugin
     /** {@hide} */    
     public abstract boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs);
+
 
     /**
      * Return a List of all packages that are installed on the device.

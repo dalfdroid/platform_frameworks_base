@@ -194,6 +194,12 @@ public class PackageManagerStub extends PackageManager {
     public List<PermissionsPlugin> getInstalledPermissionsPlugins(){
         return null;
     }
+
+    /** @hide */
+    @Override
+    public List<String> getInstalledUntrustedPackages(){
+        return null;
+    }
     
     /** @hide */
     @Override
