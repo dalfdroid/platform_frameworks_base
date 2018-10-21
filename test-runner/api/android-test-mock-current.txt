@@ -226,6 +226,8 @@ package android.test.mock {
     method public boolean addPermission(android.content.pm.PermissionInfo);
     method public boolean addPermissionAsync(android.content.pm.PermissionInfo);
     method public void addPreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
+    method public boolean addTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
+    method public boolean addTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
     method public boolean canRequestPackageInstalls();
     method public java.lang.String[] canonicalToCurrentPackageNames(java.lang.String[]);
     method public int checkPermission(java.lang.String, java.lang.String);
@@ -276,6 +278,8 @@ package android.test.mock {
     method public java.util.List<android.content.pm.ApplicationInfo> getInstalledApplicationsAsUser(int, int);
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackages(int);
     method public java.util.List<android.content.pm.PackageInfo> getInstalledPackagesAsUser(int, int);
+    method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getInstalledPermissionsPlugins();
+    method public java.util.List<java.lang.String> getInstalledUntrustedPackages();
     method public java.lang.String getInstallerPackageName(java.lang.String);
     method public java.lang.String getInstantAppAndroidId(java.lang.String, android.os.UserHandle);
     method public byte[] getInstantAppCookie();
@@ -378,6 +382,8 @@ package android.test.mock {
     method public void removeOnPermissionsChangeListener(android.content.pm.PackageManager.OnPermissionsChangedListener);
     method public void removePackageFromPreferred(java.lang.String);
     method public void removePermission(java.lang.String);
+    method public boolean removeTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>);
+    method public boolean removeTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>);
     method public void replacePreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
     method public android.content.pm.ResolveInfo resolveActivity(android.content.Intent, int);
     method public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent, int, int);
@@ -385,6 +391,7 @@ package android.test.mock {
     method public android.content.pm.ProviderInfo resolveContentProviderAsUser(java.lang.String, int, int);
     method public android.content.pm.ResolveInfo resolveService(android.content.Intent, int);
     method public void revokeRuntimePermission(java.lang.String, java.lang.String, android.os.UserHandle);
+    method public boolean setActivationStatusForPermissionsPlugin(java.lang.String, boolean);
     method public void setApplicationCategoryHint(java.lang.String, int);
     method public void setApplicationEnabledSetting(java.lang.String, int, int);
     method public boolean setApplicationHiddenSettingAsUser(java.lang.String, boolean, android.os.UserHandle);

@@ -22,8 +22,8 @@ public class PluginProxy {
     private static final String PLUGIN_MAIN = ".PluginMain";
     private static final String TAG = "heimdall";
 
-    private static final String INTERPOSER_LOCATION = "location";
-    private static final String INTERPOSER_CONTACTS = "contacts";
+    public static final String INTERPOSER_LOCATION = "location";
+    public static final String INTERPOSER_CONTACTS = "contacts";
 
     private final String mPackage;
     private final List<String> mInterposers;

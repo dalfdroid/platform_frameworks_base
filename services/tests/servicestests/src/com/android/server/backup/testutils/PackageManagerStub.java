@@ -189,6 +189,48 @@ public class PackageManagerStub extends PackageManager {
         return null;
     }
 
+    /** @hide */
+    @Override
+    public List<PermissionsPlugin> getInstalledPermissionsPlugins(){
+        return null;
+    }
+
+    /** @hide */
+    @Override
+    public List<String> getInstalledUntrustedPackages(){
+        return null;
+    }
+    
+    /** @hide */
+    @Override
+    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
+        return false;
+    }
+
+    /** @hide */
+    @Override
+    public boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset){
+        return false;
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages){
+        return false;
+    }
+
+    /** @hide */
+    @Override
+    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
+        return false;
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs){
+        return false;
+    }
+
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {
         return null;

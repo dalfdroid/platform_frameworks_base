@@ -211,6 +211,48 @@ public class MockPackageManager extends PackageManager {
         throw new UnsupportedOperationException();
     }
 
+    /** @hide */
+    @Override
+    public List<PermissionsPlugin> getInstalledPermissionsPlugins(){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public List<String> getInstalledUntrustedPackages(){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
+        throw new UnsupportedOperationException();
+    }
+
+    /** @hide */
+    @Override
+    public boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs){
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public List<PackageInfo> getInstalledPackages(int flags) {
         throw new UnsupportedOperationException();

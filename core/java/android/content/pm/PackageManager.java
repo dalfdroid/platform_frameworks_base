@@ -3262,6 +3262,35 @@ public abstract class PackageManager {
     /** {@hide} */    
     public abstract List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage);
 
+    // Retun a list of all installed permissions plugins.
+    /** {@hide} */    
+    public abstract List<PermissionsPlugin> getInstalledPermissionsPlugins();
+
+    // Return list of untrusted packages installed
+    /** {@hide} */    
+    public abstract List<String> getInstalledUntrustedPackages();
+
+    // Set activation status of the given permissions plugin.
+    /** {@hide} */    
+    public abstract boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive);
+
+    // Add target packages of the plugin
+    /** {@hide} */    
+    public abstract boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset);
+
+    // Remove target packages of the plugin
+    /** {@hide} */    
+    public abstract boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages);
+
+    // Add target apis of the plugin
+    /** {@hide} */    
+    public abstract boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset);
+
+    // Remove target apis of the plugin
+    /** {@hide} */    
+    public abstract boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs);
+
+
     /**
      * Return a List of all packages that are installed on the device.
      *

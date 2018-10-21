@@ -20,7 +20,6 @@ public class PermissionsPluginParser {
     private static final String JSON_KEY_ROOT = "permissionsplugin";
     private static final String JSON_KEY_SUPPORTED_PKGS = "supportsPkg";
     private static final String JSON_KEY_INTERPOSED_APIS = "interposesOn";
-    private static final String JSON_KEY_PROXY_CLASS = "proxyMain";
 
     public PermissionsPluginParser(){
     }
@@ -62,27 +61,17 @@ public class PermissionsPluginParser {
             JSONObject json = new JSONObject(rawJson);
             JSONObject root = json.getJSONObject(JSON_KEY_ROOT);
 
-            // Parse proxy class
-            plugin.proxyClass = root.getString(JSON_KEY_PROXY_CLASS);
-
             // Parse supported packages
             JSONArray supportedPackages = root.getJSONArray(JSON_KEY_SUPPORTED_PKGS);
-            plugin.supportedPackages = new ArrayList<>();
             for(int i=0; i<supportedPackages.length(); i++){
                 plugin.supportedPackages.add(supportedPackages.getString(i));
             }
 
             // Parse supported APIs
             JSONArray supportedAPIs = root.getJSONArray(JSON_KEY_INTERPOSED_APIS);
-            plugin.supportedAPIs = new ArrayList<>();
             for(int i=0; i<supportedAPIs.length(); i++){
                 plugin.supportedAPIs.add(supportedAPIs.getString(i));
             }
-
-            // Newly loaded plugin is by default inactive until user explicitly activate it
-            // TODO (nisarg): Currently setting it to true for testing, change it to false
-            // after integrating the permissions plugin controller
-            plugin.isActive = true;
 
         }catch (Exception e){
             e.printStackTrace();

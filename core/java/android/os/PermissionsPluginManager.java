@@ -141,11 +141,17 @@ public class PermissionsPluginManager {
     }
 
     private void perturbObject(String targetPkg, PluginProxy pluginProxy,
-            PerturbableObject perturbableObject) {
+            PerturbableObject perturbableObject, PermissionsPlugin plugin) {
         Parcelable parcelable = perturbableObject.mParcelable;
 
         switch (perturbableObject.mPerturbableType) {
         case LOCATION:
+            // Check if user wants to perturb the location for this app
+            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_LOCATION)){
+                Log.i(TAG,"Skipping location perturbation due to user preference.");
+                break;
+            }
+
             Location location = (Location) parcelable;
             IPluginLocationInterposer locInterposer =
                 pluginProxy.getLocationInterposer();
@@ -163,6 +169,11 @@ public class PermissionsPluginManager {
             break;
 
         case CONTACTS:
+            // Check if user wants to perturb contacts for this app
+            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CONTACTS)){
+                Log.i(TAG,"Skipping contacts perturbation due to user preference.");
+                break;
+            }
 
             CursorWindow window = (CursorWindow) parcelable;
             IPluginContactsInterposer contactsInterposer =
@@ -253,7 +264,7 @@ public class PermissionsPluginManager {
             case ParcelObject.PERTURBABLE_OBJECT:
                 PerturbableObject perturbableObject =
                     (PerturbableObject) recordedObject;
-                perturbObject(targetPkg, pluginProxy, perturbableObject);
+                perturbObject(targetPkg, pluginProxy, perturbableObject, plugin);
                 objectsToWrite.add(perturbableObject);
                 break;
 
