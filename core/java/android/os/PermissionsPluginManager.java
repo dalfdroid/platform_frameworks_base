@@ -206,6 +206,45 @@ public class PermissionsPluginManager {
             }
             break;
 
+        case CALENDAR:
+            // Check if user wants to perturb calendar for this app
+            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CALENDAR)){
+                Log.i(TAG,"Skipping calendar perturbation due to user preference.");
+                break;
+            }
+
+            CursorWindow calenarWindow = (CursorWindow) parcelable;
+            IPluginCalendarInterposer calendarInterposer =
+                pluginProxy.getCalendarInterposer();
+
+            PerturbableObject.QueryMetadata calendarMetadata =
+                (PerturbableObject.QueryMetadata) perturbableObject.mMetadata;
+
+            if (calendarMetadata == null) {
+                Log.d(TAG, "Metadata is not supported to be null for calendar. Breaking!");
+                break;
+            }
+
+            if (calendarInterposer != null) {
+
+                try {
+                    CursorWindow calendarPerturbedWindow = calendarInterposer.modifyData
+                        (targetPkg, calendarMetadata.url, calendarMetadata.projection,
+                         calendarMetadata.queryArgs, calenarWindow, calendarMetadata.columnNames, calendarMetadata.count);
+
+                    if (calendarPerturbedWindow != null) {
+                        perturbableObject.setPerturbedObject(calendarPerturbedWindow);
+                    }
+                } catch (Exception ex) {
+                    Log.d(TAG, "Encountered an exception while modifying calendar for "
+                          + targetPkg + " with plugin " + pluginProxy.getPackage()
+                          + ". exception: " + ex
+                          + ", message: " + ex.getMessage());
+                }
+            }
+            break;
+
+
         default:
             Log.d(TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType
                   + ", perturbableObject: " + perturbableObject

@@ -74,6 +74,22 @@ public abstract class PluginService extends Binder implements IPluginService
 
                 return true;
             }
+
+        case TRANSACTION_getCalendarInterposer:
+            {
+                data.enforceInterface(descriptor);
+                IPluginCalendarInterposer _result = this.getCalendarInterposer();
+                reply.writeNoException();
+
+                IBinder val = null;
+                if (_result != null) {
+                    val = _result.asBinder();
+                }
+                reply.writeStrongBinder(val);
+
+                return true;
+            }
+
         }
 
         return super.onTransact(code, data, reply, flags);
@@ -117,6 +133,15 @@ final class PluginServiceProxy implements IPluginService
         Log.d(TAG, errorMsg);
         throw new RemoteException(errorMsg);
     }
+
+    @Override
+    public IPluginCalendarInterposer getCalendarInterposer() throws RemoteException
+    {
+        String errorMsg = "Use getCalendarInterposerRaw() instead!";
+        Log.d(TAG, errorMsg);
+        throw new RemoteException(errorMsg);
+    }
+
 
     /**
      * Returns the raw IBinder of the location interposer of this
@@ -163,4 +188,28 @@ final class PluginServiceProxy implements IPluginService
         }
         return _result;
     }
+
+    /**
+     * Returns the raw IBinder of the calendar interposer of this
+     * plugin. Transform it into the interface version manually!
+     */
+    public IBinder getCalendarInterposerRaw() throws RemoteException {
+        Parcel _data = Parcel.obtain();
+        Parcel _reply = Parcel.obtain();
+        IBinder _result;
+
+        try {
+            _data.writeInterfaceToken(descriptor);
+            mRemote.transact(TRANSACTION_getCalendarInterposer, _data, _reply, 0);
+            _reply.readException();
+
+            _result = _reply.readStrongBinder();
+        }
+        finally {
+            _reply.recycle();
+            _data.recycle();
+        }
+        return _result;
+    }
+
 }

@@ -10,6 +10,7 @@ import android.util.Log;
 import android.os.IPluginService;
 import android.os.IPluginContactsInterposer;
 import android.os.IPluginLocationInterposer;
+import android.os.IPluginCalendarInterposer;
 
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class PluginProxy {
 
     public static final String INTERPOSER_LOCATION = "location";
     public static final String INTERPOSER_CONTACTS = "contacts";
+    public static final String INTERPOSER_CALENDAR = "calendar";
 
     private final String mPackage;
     private final List<String> mInterposers;
@@ -33,6 +35,7 @@ public class PluginProxy {
     private PluginServiceProxy mService = null;
     private IPluginLocationInterposer mLocationInterposer = null;
     private IPluginContactsInterposer mContactsInterposer = null;
+    private IPluginCalendarInterposer mCalendarInterposer = null;
 
     private boolean mConnecting = false;
     private boolean mConnected = false;
@@ -109,6 +112,13 @@ public class PluginProxy {
                         mContactsInterposer =
                             IPluginContactsInterposer.Stub.asInterface(binder);
                     }
+                } else if (interposer.equals(INTERPOSER_CALENDAR)) {
+                    IBinder binder = mService.getCalendarInterposerRaw();
+                    if (binder != null) {
+                        binder = Binder.allowBlocking(binder);
+                        mCalendarInterposer =
+                            IPluginCalendarInterposer.Stub.asInterface(binder);
+                    }
                 }
             } catch (RemoteException ex) {
                 Log.d(TAG, "Could not get " + interposer + " interposer from plugin service " + mPackage);
@@ -164,6 +174,10 @@ public class PluginProxy {
 
     public IPluginContactsInterposer getContactsInterposer() {
         return mContactsInterposer;
+    }
+
+    public IPluginCalendarInterposer getCalendarInterposer() {
+        return mCalendarInterposer;
     }
 
     public String getPackage() {
