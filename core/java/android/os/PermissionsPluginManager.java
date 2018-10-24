@@ -369,9 +369,6 @@ public class PermissionsPluginManager {
         }
 
         String targetPkg = getPackageForPid(callingPid);
-        Log.d(TAG, "FIXUPTARGETPARCEL: There are perturbables for package with pid: "
-              + callingPid +
-              ", target: " + targetPkg);
         if (targetPkg.isEmpty()) {
             copySourceToTargetParcel(sourceParcel, targetParcel,
                 sourceParcel.getRecordedObjects());
@@ -380,7 +377,6 @@ public class PermissionsPluginManager {
 
         PermissionsPluginManager local = getInstance();
         Parcel val = local.perturbAllDataImpl(targetPkg, sourceParcel, targetParcel);
-        Log.d(TAG, "TARGET PARCEL'S POSITION IS: " + targetParcel.dataPosition());
         if (val == null) {
             // The attempt to perturb data was aborted for some reason, so we
             // must copy all recorded objects from the source parcel.
