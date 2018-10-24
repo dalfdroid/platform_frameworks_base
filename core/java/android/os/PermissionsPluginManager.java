@@ -1,15 +1,19 @@
 package android.os;
 
+import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.ActivityThread;
+import android.app.ActivityManager;
+import android.app.IActivityManager;
+import android.content.pm.ParceledListSlice;
 import android.database.BulkCursorDescriptor;
 import android.database.CursorWindow;
 import android.location.Location;
-import android.util.Log;
 import android.net.Uri;
-import android.content.pm.ParceledListSlice;
+import android.util.Log;
 
 import com.android.permissionsplugin.PermissionsPlugin;
 
+import java.util.Arrays;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +24,9 @@ import java.util.Collections;
  */
 public class PermissionsPluginManager {
 
+    /**
+     * Note: all non-static class variables below are thread-local.
+     */
     private static final ThreadLocal<PermissionsPluginManager> sThreadLocal =
         new ThreadLocal<>();
 
@@ -29,12 +36,10 @@ public class PermissionsPluginManager {
     private static final HashMap<String, PluginProxy> sPluginProxies =
         new HashMap<>();
 
-    private static boolean mConnectMethodInUse = false;
+    private static final HashMap<Integer, String> pidsToPackage
+        = new HashMap<>();
 
-    /**
-     * Note: all non-static class variables below will be thread-local.
-     */
-    private HashMap<Integer, String> uidsToPackage;
+    private static boolean mConnectMethodInUse = false;
 
     private static PluginProxy connectToPluginService(String pluginPackage,
         List<String> interposers) {
@@ -294,6 +299,47 @@ public class PermissionsPluginManager {
         return instance;
     }
 
+    public static String getPackageForPid(int pid) {
+        if (pid <= 0) {
+            return "";
+        }
+
+        String targetPkg = "";
+
+        synchronized(pidsToPackage) {
+            targetPkg = pidsToPackage.get(pid);
+        }
+
+        if (targetPkg == null || targetPkg.isEmpty()) {
+            targetPkg = "";
+
+            try {
+                IActivityManager activityManager = ActivityManager.getService();
+                String[] packages = null;
+                if (activityManager != null) {
+                    packages = activityManager.getPackagesForPid(pid);
+                } else {
+                    Log.d(TAG, "Can't get activity manager while looking for package for pid: " + pid);
+                }
+
+                if (packages != null) {
+                    if (packages.length > 1) {
+                        Log.d(TAG, "Warning: There are multiple packages for pid: " + pid
+                              + ", packages: " + Arrays.toString(packages)
+                              + "; using the first one ...");
+                    }
+                    targetPkg = packages[0];
+                }
+            } catch (RemoteException ignored) {}
+
+            synchronized(pidsToPackage) {
+                pidsToPackage.put(pid, targetPkg);
+            }
+        }
+
+        return targetPkg;
+    }
+
     /**
      * {@hide}
      */
@@ -309,7 +355,7 @@ public class PermissionsPluginManager {
     /**
      * {@hide}
      */
-    public static void fixupTargetParcel(int callingUid, Parcel sourceParcel, Parcel targetParcel) {
+    public static void fixupTargetParcel(int callingPid, Parcel sourceParcel, Parcel targetParcel) {
 
         if (!sourceParcel.hasPerturbables()) {
             copySourceToTargetParcel(sourceParcel, targetParcel,
@@ -317,26 +363,19 @@ public class PermissionsPluginManager {
             return;
         }
 
+        String targetPkg = getPackageForPid(callingPid);
+        Log.d(TAG, "FIXUPTARGETPARCEL: There are perturbables for package with pid: "
+              + callingPid +
+              ", target: " + targetPkg);
+        if (targetPkg.isEmpty()) {
+            copySourceToTargetParcel(sourceParcel, targetParcel,
+                sourceParcel.getRecordedObjects());
+            return;
+        }
+
         PermissionsPluginManager local = getInstance();
-        if (local.uidsToPackage == null) {
-            local.uidsToPackage = new HashMap<>();
-        }
-
-        String targetPkg = local.uidsToPackage.get(callingUid);
-        if (targetPkg == null) {
-            try {
-                targetPkg = ActivityThread.getPackageManager().getNameForUid(callingUid);
-            } catch (RemoteException ex) {
-                Log.d(TAG, "Could not retrieve package name of uid " + callingUid + ". RemoteException: " + ex);
-                copySourceToTargetParcel(sourceParcel, targetParcel,
-                    sourceParcel.getRecordedObjects());
-                return;
-            }
-
-            local.uidsToPackage.put(callingUid, targetPkg);
-        }
-
         Parcel val = local.perturbAllDataImpl(targetPkg, sourceParcel, targetParcel);
+        Log.d(TAG, "TARGET PARCEL'S POSITION IS: " + targetParcel.dataPosition());
         if (val == null) {
             // The attempt to perturb data was aborted for some reason, so we
             // must copy all recorded objects from the source parcel.

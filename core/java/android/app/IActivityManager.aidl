@@ -640,4 +640,7 @@ interface IActivityManager {
 
      void setShowWhenLocked(in IBinder token, boolean showWhenLocked);
      void setTurnScreenOn(in IBinder token, boolean turnScreenOn);
+
+    // Start of Dalf transactions
+    String[] getPackagesForPid(int pid);
 }

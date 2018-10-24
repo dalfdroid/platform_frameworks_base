@@ -24663,4 +24663,26 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
         }
     }
+
+    /**
+     * {@hide}
+     */
+    @Override
+    public String[] getPackagesForPid(int pid) {
+
+        String[] ret = null;
+
+        synchronized (this) {
+            // Iterate across all processes
+            for (int i = mLruProcesses.size() - 1; i >= 0; i--) {
+                ProcessRecord app = mLruProcesses.get(i);
+                if (app.pid == pid) {
+                    ret = app.getPackageList();
+                    break;
+                }
+            }
+        }
+
+        return ret;
+    }
 }
