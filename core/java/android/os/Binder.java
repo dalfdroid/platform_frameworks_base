@@ -101,11 +101,6 @@ public class Binder implements IBinder {
     private static volatile boolean sTracingEnabled = false;
 
     /**
-     * The package name of the app or service that created this Binder object.
-     */
-    private String mCreatorPkg = "";
-
-    /**
      * Enable Binder IPC tracing.
      *
      * @hide
@@ -378,8 +373,6 @@ public class Binder implements IBinder {
                     klass.getCanonicalName());
             }
         }
-
-        setCreatorPackage(ActivityThread.currentPackageName());
     }
     
     /**
@@ -756,24 +749,6 @@ public class Binder implements IBinder {
 
         return res;
     }
-
-    /**
-     * {@hide}
-     */
-    public void setCreatorPackage(String pkg) {
-        if (pkg == null) {
-            pkg = "";
-        }
-
-        mCreatorPkg = pkg;
-    }
-
-    /**
-     * {@hide}
-     */
-    public String getCreatorPackage() {
-        return mCreatorPkg;
-    }
 }
 
 final class BinderProxy implements IBinder {
@@ -784,16 +759,16 @@ final class BinderProxy implements IBinder {
     public native boolean isBinderAlive();
 
     /**
-     * The package name of the target app or service of this BinderProxy.
+     * The pid of the target app or service of this BinderProxy.
      */
-    private String mTargetPkg = "";
+    private int mTargetPid = 0;
 
     public IInterface queryLocalInterface(String descriptor) {
         return null;
     }
 
     public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        Parcel perturbedParcel = PermissionsPluginManager.perturbAllData(mTargetPkg, data);
+        Parcel perturbedParcel = PermissionsPluginManager.perturbAllData(mTargetPid, data);
         Parcel parcelToSend = (perturbedParcel == null) ? data : perturbedParcel;
 
         Binder.checkParcel(this, code, parcelToSend, "Unreasonably large binder buffer");
@@ -910,19 +885,15 @@ final class BinderProxy implements IBinder {
     /**
      * {@hide}
      */
-    public void setTargetPackage(String pkg) {
-        if (pkg == null) {
-            pkg = "";
-        }
-
-        mTargetPkg = pkg;
+    public void setTargetPid(int pid) {
+        mTargetPid = pid;
     }
 
     /**
      * {@hide}
      */
-    public String getTargetPackage() {
-        return mTargetPkg;
+    public int getTargetPid() {
+        return mTargetPid;
     }
     
     final private WeakReference mSelf;

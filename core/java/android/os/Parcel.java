@@ -779,20 +779,18 @@ public final class Parcel {
 
         nativeWriteStrongBinder(mNativePtr, val);
 
-        if (val != null) {
-
-            String target = "";
-            if (val instanceof Binder) {
-                target = ((Binder) val).getCreatorPackage();
-            } else if (val instanceof BinderProxy) {
-                target = ((BinderProxy) val).getTargetPackage();
-            } else {
-                Log.d(HEIMDALL_TAG, "Unexpected IBinder object when writing strong binder: " + val);
-                return;
-            }
-
+        if (val != null && (val instanceof BinderProxy)) {
+            /**
+             * Only write the target pid if we're explicitly sending a binder
+             * proxy object. (Note: if a process written in Java sends a binder
+             * proxy in a parcel to a process written in native code, the
+             * receiving process will likely not be able to read the proxy
+             * properly since the native parcel reading code has not been
+             * modified.)
+             */
+            BinderProxy p = ((BinderProxy) val);
             writeInt(VAL_BINDER_TARGET_SENTINEL);
-            writeString(target);
+            writeInt(p.getTargetPid());
         }
 
         if (!mStopRecording) {
@@ -2180,33 +2178,40 @@ public final class Parcel {
     public final IBinder readStrongBinder() {
         IBinder binder = nativeReadStrongBinder(mNativePtr);
 
-        /**
-         * We may receive a binder object either from Java code that wrote to
-         * the parcel or native code that wrote to the parcel. Since we have not
-         * (and will not) modify the native parcel writing code to also write
-         * the target package, we need to do some guesswork here to check if the
-         * target package name is available.
-         */
-        if (binder != null && dataAvail() > 0) {
-            int currentPosition = dataPosition();
-            int sentinel = readInt();
-            if (sentinel == VAL_BINDER_TARGET_SENTINEL) {
-                String targetPkg = readString();
+        boolean targetSet = false;
+        if (binder != null) {
 
-                if (binder instanceof Binder) {
-                    // This should be happening because a process is sending
-                    // itself its own Binder object.
-                    ((Binder) binder).setCreatorPackage(targetPkg);
-                } else if (binder instanceof BinderProxy) {
-                    ((BinderProxy) binder).setTargetPackage(targetPkg);
+            /**
+             * Since we only write the target package pid if the sender
+             * explicitly sends us a binder proxy, we need to do some guesswork
+             * here to check if the target package pid is available.
+             */
+            if (dataAvail() > 0) {
+                int currentPosition = dataPosition();
+                int sentinel = readInt();
+                if (sentinel == VAL_BINDER_TARGET_SENTINEL) {
+                    int targetPid = readInt();
+
+                    if (binder instanceof BinderProxy) {
+                        ((BinderProxy) binder).setTargetPid(targetPid);
+                        targetSet = true;
+                    }
                 } else {
-                    Log.d(HEIMDALL_TAG, "Unexpected IBinder object when reading strong binder: " + binder);
+                    // Reset the position since we do not have the expected
+                    // sentinel.
+                    setDataPosition(currentPosition);
                 }
+            }
 
-            } else {
-                // Reset the position since we do not have the expected
-                // sentinel.
-                setDataPosition(currentPosition);
+            if (!targetSet) {
+                if (binder instanceof BinderProxy) {
+                    /**
+                     * Probabilistically infer that the calling pid that is
+                     * sending us the binder proxy is also its creator.
+                     */
+                    int pid = Binder.getCallingPid();
+                    ((BinderProxy) binder).setTargetPid(pid);
+                }
             }
         }
 

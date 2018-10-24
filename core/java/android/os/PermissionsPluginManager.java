@@ -343,9 +343,14 @@ public class PermissionsPluginManager {
     /**
      * {@hide}
      */
-    public static Parcel perturbAllData(String targetPkg, Parcel sourceParcel) {
+    public static Parcel perturbAllData(int targetPid, Parcel sourceParcel) {
 
-        if (targetPkg == null || targetPkg.length() == 0) {
+        if (!sourceParcel.hasPerturbables()) {
+            return null;
+        }
+
+        String targetPkg = getPackageForPid(targetPid);
+        if (targetPkg.isEmpty()) {
             return null;
         }
 
