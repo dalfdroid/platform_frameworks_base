@@ -740,6 +740,7 @@ public class PackageManagerService extends IPackageManager.Stub
     private static final List<String> untrustedPackages = new ArrayList<>();
     static {
         untrustedPackages.add("com.google.android.apps");
+        untrustedPackages.add("com.android.calendar");
     }
 
     // Keys are isolated uids and values are the uid of the application

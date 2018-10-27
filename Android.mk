@@ -265,6 +265,7 @@ LOCAL_SRC_FILES += \
 	core/java/android/os/IPermissionController.aidl \
 	core/java/android/os/IPluginContactsInterposer.aidl \
 	core/java/android/os/IPluginLocationInterposer.aidl \
+	core/java/android/os/IPluginCalendarInterposer.aidl \
 	core/java/android/os/IProcessInfoService.aidl \
 	core/java/android/os/IProgressListener.aidl \
 	core/java/android/os/IPowerManager.aidl \
