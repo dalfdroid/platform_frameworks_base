@@ -195,7 +195,6 @@ public final class Parcel {
     private static final boolean DEBUG_RECYCLE = false;
     private static final boolean DEBUG_ARRAY_MAP = false;
     private static final String TAG = "Parcel";
-    private static final String HEIMDALL_TAG = "heimdall";
 
     @SuppressWarnings({"UnusedDeclaration"})
     private long mNativePtr; // used by native code
@@ -578,25 +577,42 @@ public final class Parcel {
     }
 
     /** @hide */
-    public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
-        startPerturbableObject(type, object, writeFlags, null);
+    public final boolean startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
+        return startPerturbableObject(type, object, writeFlags, null);
     }
 
+    /**
+     *
+     * Start tracking perturbable object.
+     * Only one perturbable object (root) is tracked at a time.
+     * Currently, nested perturbable objects are not tracked.
+     * @return True if the perturbable object is being tracked and false otherwise.
+     * Note: Only call finishPerturbableObject if startPerturbableObject returns true.
+     * 
+     */
     /** @hide */
-    public final void startPerturbableObject(Perturbable type, Parcelable object,
+    public final boolean startPerturbableObject(Perturbable type, Parcelable object,
             int writeFlags, Object metadata) {
+
         if (mStopRecording) {
-            return;
+            return false;
         }
 
         if (mPerturbablesInProgress == null) {
             mPerturbablesInProgress = new ArrayDeque<>();
         }
 
-        PerturbableObject perturbableObject =
-            new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
+        // Track only root objects
+        if (mPerturbablesInProgress.isEmpty()){
+            PerturbableObject perturbableObject =
+                new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
 
-        mPerturbablesInProgress.add(perturbableObject);
+            mPerturbablesInProgress.add(perturbableObject);
+            return true;
+        }else{
+            return false;
+        }
+
     }
 
     /** @hide */
