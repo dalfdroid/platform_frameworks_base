@@ -2,6 +2,8 @@ package android.os;
 
 import android.net.Uri;
 
+import java.util.HashMap;
+
 /**
  * A record of an object written to a Parcel that needs to be perturbed.
  *
@@ -24,6 +26,12 @@ public class PerturbableObject extends ParcelObject {
     /** Metadata about the original parcelable object. */
     public Object mMetadata;
 
+    /** 
+     * Counts of nested perturbable objects stored within this object.
+     * The key is the type of object and value is the counts.
+     */
+    public HashMap<Perturbable, Integer> mNestedPerturbableCounts; 
+
     public PerturbableObject(Perturbable type, Parcelable object, int startPos,
             int writeFlags) {
         this(type, object, startPos, writeFlags, /** metadata */ null);
@@ -36,10 +44,21 @@ public class PerturbableObject extends ParcelObject {
         mParcelable = object;
         mWriteFlags = writeFlags;
         mMetadata = metadata;
+
+        mNestedPerturbableCounts = new HashMap<>();
     }
 
     public void setPerturbedObject(Parcelable perturbed) {
         mPerturbed = perturbed;
+    }
+
+    public void foundNestedPerturbableObject(Perturbable perturbableType){
+        Integer count = mNestedPerturbableCounts.get(perturbableType);
+        if(count == null){            
+            mNestedPerturbableCounts.put(perturbableType,1);
+        }else{
+            mNestedPerturbableCounts.put(perturbableType,count+1);            
+        }
     }
 
     /**

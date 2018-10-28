@@ -610,6 +610,10 @@ public final class Parcel {
             mPerturbablesInProgress.add(perturbableObject);
             return true;
         }else{
+            // Inform root object about this nested object
+            // Note: This operation assumes we track only one object (the root) at a time.
+            PerturbableObject perturbableObject = mPerturbablesInProgress.getFirst();
+            perturbableObject.foundNestedPerturbableObject(type);
             return false;
         }
 
