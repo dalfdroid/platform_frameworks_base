@@ -293,6 +293,7 @@ import com.android.server.storage.DeviceStorageMonitorInternal;
 import com.android.permissionsplugin.PermissionsPluginParser;
 import com.android.permissionsplugin.PermissionsPlugin;
 import com.android.permissionsplugin.PermissionsPluginDb;
+import com.android.permissionsplugin.PermissionsPluginOptions;
 
 import dalvik.system.CloseGuard;
 import dalvik.system.DexFile;
@@ -415,9 +416,6 @@ public class PackageManagerService extends IPackageManager.Stub
     private static final boolean DEBUG_EPHEMERAL = Build.IS_DEBUGGABLE;
     private static final boolean DEBUG_TRIAGED_MISSING = false;
     private static final boolean DEBUG_APP_DATA = false;
-
-    private static final boolean DEBUG_HEIMDALL = true;
-    private static final String TAG_HEIMDALL = "Heimdall_PackageManagserService";
 
     /** REMOVE. According to Svet, this was only used to reset permissions during development. */
     static final boolean CLEAR_RUNTIME_PERMISSIONS_ON_UPGRADE = false;
@@ -3184,8 +3182,8 @@ public class PackageManagerService extends IPackageManager.Stub
 
         // Retrieve saved plugins from the plugin db
         ArrayMap<String,PermissionsPlugin> savedPlugins = mPermissionsPluginDb.loadPlugins();
-        if(DEBUG_HEIMDALL){
-            Slog.i(TAG_HEIMDALL,"Number of plugins loaded from db: "+savedPlugins.size());
+        if(PermissionsPluginOptions.DEBUG){
+            Slog.d(PermissionsPluginOptions.TAG,"Number of plugins loaded from db: "+savedPlugins.size());
         }
 
         // Find newly installed permissions plugin by scanning the installed packages
@@ -3205,8 +3203,8 @@ public class PackageManagerService extends IPackageManager.Stub
                 // Update permissions plugin maps
                 addToPermissionsPluginMapLP(plugin);
 
-                if(DEBUG_HEIMDALL){
-                    Slog.i(TAG_HEIMDALL,"Permissions plugin loaded from db. Package name: " + 
+                if(PermissionsPluginOptions.DEBUG){
+                    Slog.d(PermissionsPluginOptions.TAG,"Permissions plugin loaded from db. Package name: " + 
                         plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                         plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs + 
                         "target APIS: " + plugin.targetAPIs + 
@@ -3226,12 +3224,12 @@ public class PackageManagerService extends IPackageManager.Stub
         for(PermissionsPlugin plugin : savedPlugins.values()){
             int deletedRows = mPermissionsPluginDb.deletePlugin(plugin);
             if(0==deletedRows){
-                Slog.e(TAG_HEIMDALL,"Failed to delete plugin " + plugin.packageName + " from db.");
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to delete plugin " + plugin.packageName + " from db.");
             }
         }
 
-        if(DEBUG_HEIMDALL){
-            Slog.i(TAG_HEIMDALL,"Number of Permissions plugins loaded: "+ mPermissionsPlugins.size());
+        if(PermissionsPluginOptions.DEBUG){
+            Slog.d(PermissionsPluginOptions.TAG,"Number of Permissions plugins loaded: "+ mPermissionsPlugins.size());
         }
 
     }
@@ -3245,7 +3243,7 @@ public class PackageManagerService extends IPackageManager.Stub
         PermissionsPlugin plugin  = mPermissionsPluginParser.parsePermissionsPlugin(pkg);
 
         if(plugin == null){
-            Slog.e(TAG_HEIMDALL,"Failed to parse plugin package: "+ pkg.packageName);
+            Slog.e(PermissionsPluginOptions.TAG,"Failed to parse plugin package: "+ pkg.packageName);
         }else{
             // Update permissions plugin maps
             addToPermissionsPluginMapLP(plugin);
@@ -3253,11 +3251,11 @@ public class PackageManagerService extends IPackageManager.Stub
             // Add new plugin to the plugin db
             plugin.id = mPermissionsPluginDb.insertPlugin(plugin);
             if(-1 == plugin.id){
-                Log.d(TAG_HEIMDALL,"Failed to insert plugin " + plugin.packageName + " in plugin db.");
+                Log.e(PermissionsPluginOptions.TAG,"Failed to insert plugin " + plugin.packageName + " in plugin db.");
             }
 
-            if(DEBUG_HEIMDALL){                        
-                Slog.i(TAG_HEIMDALL,"Permissions plugin parsed. Package name: " + 
+            if(PermissionsPluginOptions.DEBUG){                        
+                Slog.d(PermissionsPluginOptions.TAG,"Permissions plugin parsed. Package name: " + 
                     plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
                     plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs +
                     "target APIS: " + plugin.targetAPIs + 
@@ -3276,7 +3274,7 @@ public class PackageManagerService extends IPackageManager.Stub
         // Remove the permissions plugin from the plugin mapping
         PermissionsPlugin plugin = mPermissionsPlugins.remove(packageName);
         if(null == plugin){
-            Slog.e(TAG_HEIMDALL,"Failed to find package " + packageName + " in permissions plugin map.");
+            Slog.e(PermissionsPluginOptions.TAG,"Failed to find package " + packageName + " in permissions plugin map.");
             return;
         }
 
@@ -3288,12 +3286,12 @@ public class PackageManagerService extends IPackageManager.Stub
         // Remove the plugin from the plugin db
         int deletedRows = mPermissionsPluginDb.deletePlugin(plugin);
         if(1!=deletedRows){
-            Slog.e(TAG_HEIMDALL,"Failed to remove plugin " + plugin.packageName + " from the plugin db.");
+            Slog.e(PermissionsPluginOptions.TAG,"Failed to remove plugin " + plugin.packageName + " from the plugin db.");
             return;
         }
 
-        if(DEBUG_HEIMDALL){
-            Slog.i(TAG_HEIMDALL,"Permissions plugin " + plugin.packageName + " removed.");
+        if(PermissionsPluginOptions.DEBUG){
+            Slog.d(PermissionsPluginOptions.TAG,"Permissions plugin " + plugin.packageName + " removed.");
         }
 
     }
@@ -3403,7 +3401,7 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
-                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
                 return false;           
             }
 
@@ -3413,8 +3411,8 @@ public class PackageManagerService extends IPackageManager.Stub
             // Update plugin db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"setActivationStatusForPermissionsPlugin " + pluginPackage + " update status: " + updatedRows);
+            if(PermissionsPluginOptions.DEBUG){
+                Slog.d(PermissionsPluginOptions.TAG,"setActivationStatusForPermissionsPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
             return (updatedRows==1);         
@@ -3436,7 +3434,7 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
-                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
                 return false;           
             }
 
@@ -3468,8 +3466,8 @@ public class PackageManagerService extends IPackageManager.Stub
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"addTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
+            if(PermissionsPluginOptions.DEBUG){
+                Slog.d(PermissionsPluginOptions.TAG,"addTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
             return (updatedRows == 1);
@@ -3490,7 +3488,7 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
-                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
                 return false;           
             }
 
@@ -3506,8 +3504,8 @@ public class PackageManagerService extends IPackageManager.Stub
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"removeTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
+            if(PermissionsPluginOptions.DEBUG){
+                Slog.d(PermissionsPluginOptions.TAG,"removeTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
 
@@ -3529,7 +3527,7 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
-                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
                 return false;           
             }
 
@@ -3548,8 +3546,8 @@ public class PackageManagerService extends IPackageManager.Stub
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"addTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
+            if(PermissionsPluginOptions.DEBUG){
+                Slog.d(PermissionsPluginOptions.TAG,"addTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
             return (updatedRows == 1);
@@ -3569,7 +3567,7 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
-                Slog.e(TAG_HEIMDALL,"Failed to get plugin with package " + pluginPackage);     
+                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
                 return false;           
             }
 
@@ -3581,8 +3579,8 @@ public class PackageManagerService extends IPackageManager.Stub
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
 
-            if(DEBUG_HEIMDALL){
-                Slog.d(TAG_HEIMDALL,"removeTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
+            if(PermissionsPluginOptions.DEBUG){
+                Slog.d(PermissionsPluginOptions.TAG,"removeTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
             return (updatedRows == 1);
@@ -19382,8 +19380,8 @@ public class PackageManagerService extends IPackageManager.Stub
                 // If the installed package is a permissions plugin
                 // add plugin to db and update plugin map.
                 if(pkg.isPermissionsPlugin){
-                    if(DEBUG_HEIMDALL){
-                        Slog.i(TAG_HEIMDALL,"Found new plugin " + pkgName + ". Installing...");
+                    if(PermissionsPluginOptions.DEBUG){
+                        Slog.d(PermissionsPluginOptions.TAG,"Found new plugin " + pkgName + ". Installing...");
                     }
                     addPermissionsPluginLP(pkg);    
                 }
@@ -20006,8 +20004,8 @@ public class PackageManagerService extends IPackageManager.Stub
                     // If the uninstalled package is a plugin
                     // remove plugin from the db and update plugin map
                     if(pkg.isPermissionsPlugin){
-                        if(DEBUG_HEIMDALL){
-                            Slog.i(TAG_HEIMDALL,"Uninstalled plugin " + packageName + ". Removing...");
+                        if(PermissionsPluginOptions.DEBUG){
+                            Slog.d(PermissionsPluginOptions.TAG,"Uninstalled plugin " + packageName + ". Removing...");
                         }
                         removePermissionsPluginLP(packageName);    
                     }

@@ -15,15 +15,13 @@ import android.util.Log;
 import android.util.ArrayMap;
 
 import com.android.permissionsplugin.PermissionsPlugin;
+import com.android.permissionsplugin.PermissionsPluginOptions;
 
 import java.util.List;
 import java.util.Arrays;
 import java.util.ArrayList;
 
 public class PermissionsPluginDb{
-
-    private static final String TAG = "PermissionsPluginDb";
-    private static final Boolean DEBUG = true;
 
     // Name of the permisisons plugin database
     private static final String DATABASE_NAME = "permissions_plugin.db";
@@ -84,8 +82,8 @@ public class PermissionsPluginDb{
                 PluginEntry.COLUMN_NAME_IS_ACTIVE + " INTEGER NOT NULL)";
             db.execSQL(SQL_CREATE_PLUGIN_TABLE);
 
-            if(DEBUG){
-                Log.d(TAG,"Created table " + PluginEntry.TABLE_NAME + " in db "+DATABASE_NAME);
+            if(PermissionsPluginOptions.DEBUG){
+                Log.d(PermissionsPluginOptions.TAG,"Created table " + PluginEntry.TABLE_NAME + " in db "+DATABASE_NAME);
             }
         }
 
@@ -162,11 +160,11 @@ public class PermissionsPluginDb{
                     plugins.put(plugin.packageName,plugin);
                 }
             }else{
-                Log.e(TAG,"Failed to retrieve plugins from plugin db "+DATABASE_NAME);
+                Log.e(PermissionsPluginOptions.TAG,"Failed to retrieve plugins from plugin db "+DATABASE_NAME);
             }
 
         }catch(SQLiteException e){
-            Log.e(TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
+            Log.e(PermissionsPluginOptions.TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
         }
 
         return plugins;
@@ -212,7 +210,7 @@ public class PermissionsPluginDb{
             return newRowId;
 
         }catch(SQLiteException e){
-            Log.e(TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
+            Log.e(PermissionsPluginOptions.TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
             return -1;
         }
 
@@ -244,7 +242,7 @@ public class PermissionsPluginDb{
             return deletedRows;
 
         }catch(SQLiteException e){
-            Log.e(TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
+            Log.e(PermissionsPluginOptions.TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
             return 0;
         }
 
@@ -259,7 +257,7 @@ public class PermissionsPluginDb{
     public int updatePlugin(PermissionsPlugin plugin){
 
         if(null == plugin || -1 == plugin.id){
-            Log.d(TAG,"Failed to update plugin due to invalid plugin");
+            Log.e(PermissionsPluginOptions.TAG,"Failed to update plugin due to invalid plugin");
             return 0;
         }
 
@@ -296,7 +294,7 @@ public class PermissionsPluginDb{
             return updatedRows;
 
         }catch(SQLiteException e){
-            Log.e(TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
+            Log.e(PermissionsPluginOptions.TAG,"Failed to open plugin db " + DATABASE_NAME + ". SQLiteException: "+ e);
             return 0;
         }
 

@@ -12,6 +12,8 @@ import android.os.IPluginContactsInterposer;
 import android.os.IPluginLocationInterposer;
 import android.os.IPluginCalendarInterposer;
 
+import com.android.permissionsplugin.PermissionsPluginOptions;
+
 import java.util.List;
 
 /**
@@ -21,7 +23,6 @@ import java.util.List;
  */
 public class PluginProxy {
     private static final String PLUGIN_MAIN = ".PluginMain";
-    private static final String TAG = "heimdall";
 
     public static final String INTERPOSER_LOCATION = "location";
     public static final String INTERPOSER_CONTACTS = "contacts";
@@ -121,7 +122,7 @@ public class PluginProxy {
                     }
                 }
             } catch (RemoteException ex) {
-                Log.d(TAG, "Could not get " + interposer + " interposer from plugin service " + mPackage);
+                Log.d(PermissionsPluginOptions.TAG, "Could not get " + interposer + " interposer from plugin service " + mPackage);
             }
         }
     }
@@ -134,7 +135,7 @@ public class PluginProxy {
     public boolean connect() {
         Context c = ActivityThread.currentApplication();
         if (c == null) {
-            Log.d(TAG, "Context is null. Can't connect to: " + mPackage);
+            Log.d(PermissionsPluginOptions.TAG, "Context is null. Can't connect to: " + mPackage);
             return false;
         }
 
@@ -145,7 +146,7 @@ public class PluginProxy {
         if (ret) {
             mConnecting = true;
         } else {
-            Log.d(TAG, "Unable to bind to plugin service: " + mPackage);
+            Log.d(PermissionsPluginOptions.TAG, "Unable to bind to plugin service: " + mPackage);
             return false;
         }
 

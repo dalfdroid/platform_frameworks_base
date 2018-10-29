@@ -3,6 +3,9 @@ package com.android.permissionsplugin;
 import android.content.pm.PackageParser;
 import android.content.res.AssetManager;
 import com.android.permissionsplugin.PermissionsPlugin;
+import com.android.permissionsplugin.PermissionsPluginOptions;
+
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -33,6 +36,7 @@ public class PermissionsPluginParser {
 
         // Check if pkg is a valid plugin
         if(pkg==null || !pkg.isPermissionsPlugin){
+            Log.e(PermissionsPluginOptions.TAG,"Given package is either null or not a permissions plugin");
             return null;
         }
 
@@ -74,6 +78,7 @@ public class PermissionsPluginParser {
             }
 
         }catch (Exception e){
+            Log.e(PermissionsPluginOptions.TAG,"Failed to parse plugin " + pkg.packageName);
             e.printStackTrace();
         }
 

@@ -2,6 +2,8 @@ package android.os;
 
 import android.util.Log;
 
+import com.android.permissionsplugin.PermissionsPluginOptions;
+
 /**
  * The main abstract class that every plugin service must extend.
  *
@@ -100,8 +102,6 @@ final class PluginServiceProxy implements IPluginService
 {
     private IBinder mRemote;
 
-    private static final String TAG = "heimdall";
-
     public PluginServiceProxy(IBinder remote)
     {
         mRemote = remote;
@@ -122,7 +122,7 @@ final class PluginServiceProxy implements IPluginService
     public IPluginLocationInterposer getLocationInterposer() throws RemoteException
     {
         String errorMsg = "Use getLocationInterposerRaw() instead!";
-        Log.d(TAG, errorMsg);
+        Log.d(PermissionsPluginOptions.TAG, errorMsg);
         throw new RemoteException(errorMsg);
     }
 
@@ -130,7 +130,7 @@ final class PluginServiceProxy implements IPluginService
     public IPluginContactsInterposer getContactsInterposer() throws RemoteException
     {
         String errorMsg = "Use getContactsInterposerRaw() instead!";
-        Log.d(TAG, errorMsg);
+        Log.d(PermissionsPluginOptions.TAG, errorMsg);
         throw new RemoteException(errorMsg);
     }
 
@@ -138,7 +138,7 @@ final class PluginServiceProxy implements IPluginService
     public IPluginCalendarInterposer getCalendarInterposer() throws RemoteException
     {
         String errorMsg = "Use getCalendarInterposerRaw() instead!";
-        Log.d(TAG, errorMsg);
+        Log.d(PermissionsPluginOptions.TAG, errorMsg);
         throw new RemoteException(errorMsg);
     }
 

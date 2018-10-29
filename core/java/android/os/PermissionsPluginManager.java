@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.android.permissionsplugin.PermissionsPlugin;
+import com.android.permissionsplugin.PermissionsPluginOptions;
 
 import java.util.Arrays;
 import java.util.ArrayDeque;
@@ -30,9 +31,6 @@ public class PermissionsPluginManager {
     private static final ThreadLocal<PermissionsPluginManager> sThreadLocal =
         new ThreadLocal<>();
 
-    private static final boolean DEBUG = true;
-    private static final String TAG = "heimdall";
-
     private static final HashMap<String, PluginProxy> sPluginProxies =
         new HashMap<>();
 
@@ -49,7 +47,7 @@ public class PermissionsPluginManager {
                 try {
                     sPluginProxies.wait();
                 } catch (InterruptedException ex) {
-                    Log.d(TAG, "Unexpected interruption while waiting to connect to " +
+                    Log.d(PermissionsPluginOptions.TAG, "Unexpected interruption while waiting to connect to " +
                           pluginPackage + ". Aborting ...");
                     return null;
                 }
@@ -67,14 +65,14 @@ public class PermissionsPluginManager {
                 return pluginProxy;
             }
 
-            if (DEBUG) {
-                Log.d(TAG, "Connecting to plugin service: " + pluginPackage +
+            if (PermissionsPluginOptions.DEBUG) {
+                Log.d(PermissionsPluginOptions.TAG, "Connecting to plugin service: " + pluginPackage +
                       " with interposers " + interposers);
             }
 
             boolean startedConnecting = pluginProxy.connect();
             if (!startedConnecting) {
-                Log.d(TAG, "Failed to try bind service to : " + pluginPackage);
+                Log.d(PermissionsPluginOptions.TAG, "Failed to try bind service to : " + pluginPackage);
                 mConnectMethodInUse = false;
                 return pluginProxy;
             }
@@ -91,10 +89,10 @@ public class PermissionsPluginManager {
             }
 
             if (!pluginProxy.isConnected()) {
-                Log.d(TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
+                Log.d(PermissionsPluginOptions.TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
             } else {
-                if (DEBUG) {
-                    Log.d(TAG, "Connected to: " + pluginPackage);
+                if (PermissionsPluginOptions.DEBUG) {
+                    Log.d(PermissionsPluginOptions.TAG, "Connected to: " + pluginPackage);
                 }
             }
 
@@ -131,7 +129,7 @@ public class PermissionsPluginManager {
             default:
                 String errorMsg = "Panic! Unexpected object while creating target parcel: " +
                     parcelObject;
-                Log.d(TAG, errorMsg);
+                Log.d(PermissionsPluginOptions.TAG, errorMsg);
                 throw new UnsupportedOperationException(errorMsg);
             }
 
@@ -153,7 +151,9 @@ public class PermissionsPluginManager {
         case LOCATION:
             // Check if user wants to perturb the location for this app
             if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_LOCATION)){
-                Log.i(TAG,"Skipping location perturbation due to user preference.");
+                if(PermissionsPluginOptions.DEBUG){
+                    Log.d(PermissionsPluginOptions.TAG,"Skipping location perturbation due to user preference.");
+                }
                 break;
             }
 
@@ -165,7 +165,7 @@ public class PermissionsPluginManager {
                     location = locInterposer.modifyLocation(targetPkg, location);
                     perturbableObject.setPerturbedObject(location);
                 } catch (Exception ex) {
-                    Log.d(TAG, "Encountered an exception while modifying location for "
+                    Log.d(PermissionsPluginOptions.TAG, "Encountered an exception while modifying location for "
                           + targetPkg + " with plugin " + pluginProxy.getPackage()
                           + ". exception: " + ex
                           + ", message: " + ex.getMessage());
@@ -176,7 +176,9 @@ public class PermissionsPluginManager {
         case CONTACTS:
             // Check if user wants to perturb contacts for this app
             if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CONTACTS)){
-                Log.i(TAG,"Skipping contacts perturbation due to user preference.");
+                if(PermissionsPluginOptions.DEBUG){
+                    Log.d(PermissionsPluginOptions.TAG,"Skipping contacts perturbation due to user preference.");
+                }
                 break;
             }
 
@@ -188,7 +190,7 @@ public class PermissionsPluginManager {
                 (PerturbableObject.QueryMetadata) perturbableObject.mMetadata;
 
             if (metadata == null) {
-                Log.d(TAG, "Metadata is not supported to be null for contacts. Breaking!");
+                Log.d(PermissionsPluginOptions.TAG, "Metadata is not supported to be null for contacts. Breaking!");
                 break;
             }
 
@@ -203,7 +205,7 @@ public class PermissionsPluginManager {
                         perturbableObject.setPerturbedObject(perturbedWindow);
                     }
                 } catch (Exception ex) {
-                    Log.d(TAG, "Encountered an exception while modifying contact for "
+                    Log.d(PermissionsPluginOptions.TAG, "Encountered an exception while modifying contact for "
                           + targetPkg + " with plugin " + pluginProxy.getPackage()
                           + ". exception: " + ex
                           + ", message: " + ex.getMessage());
@@ -214,7 +216,9 @@ public class PermissionsPluginManager {
         case CALENDAR:
             // Check if user wants to perturb calendar for this app
             if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CALENDAR)){
-                Log.i(TAG,"Skipping calendar perturbation due to user preference.");
+                if(PermissionsPluginOptions.DEBUG){
+                    Log.d(PermissionsPluginOptions.TAG,"Skipping calendar perturbation due to user preference.");
+                }
                 break;
             }
 
@@ -226,7 +230,7 @@ public class PermissionsPluginManager {
                 (PerturbableObject.QueryMetadata) perturbableObject.mMetadata;
 
             if (calendarMetadata == null) {
-                Log.d(TAG, "Metadata is not supported to be null for calendar. Breaking!");
+                Log.d(PermissionsPluginOptions.TAG, "Metadata is not supported to be null for calendar. Breaking!");
                 break;
             }
 
@@ -241,7 +245,7 @@ public class PermissionsPluginManager {
                         perturbableObject.setPerturbedObject(calendarPerturbedWindow);
                     }
                 } catch (Exception ex) {
-                    Log.d(TAG, "Encountered an exception while modifying calendar for "
+                    Log.d(PermissionsPluginOptions.TAG, "Encountered an exception while modifying calendar for "
                           + targetPkg + " with plugin " + pluginProxy.getPackage()
                           + ". exception: " + ex
                           + ", message: " + ex.getMessage());
@@ -251,7 +255,7 @@ public class PermissionsPluginManager {
 
 
         default:
-            Log.d(TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType
+            Log.d(PermissionsPluginOptions.TAG, "Unhandled perturbable type: " + perturbableObject.mPerturbableType
                   + ", perturbableObject: " + perturbableObject
                   + ". Writing original ...");
             break;
@@ -267,8 +271,8 @@ public class PermissionsPluginManager {
         // Check if any active plugin is available for the target package.
         // If so, proceed with the rest of the code. Otherwise, return null.
         List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
-        if (DEBUG) {
-            Log.d(TAG, "Received " + pluginList.size() +
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
                   " active plugins for app: " + targetPkg);
         }
 
@@ -288,8 +292,8 @@ public class PermissionsPluginManager {
             return null;
         }
 
-        if (DEBUG) {
-            Log.d(TAG, "Proceeding to perturb data for " + targetPkg);
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Proceeding to perturb data for " + targetPkg);
         }
 
         ArrayDeque<ParcelObject> recordedObjects = sourceParcel.getRecordedObjects();
@@ -315,7 +319,7 @@ public class PermissionsPluginManager {
             default:
                 String errorMsg = "Panic! Unexpected recorded object type encountered: " +
                     recordedObject;
-                Log.d(TAG, errorMsg);
+                Log.d(PermissionsPluginOptions.TAG, errorMsg);
                 throw new UnsupportedOperationException(errorMsg);
             }
         }
@@ -358,14 +362,16 @@ public class PermissionsPluginManager {
                 if (activityManager != null) {
                     packages = activityManager.getPackagesForPid(pid);
                 } else {
-                    Log.d(TAG, "Can't get activity manager while looking for package for pid: " + pid);
+                    Log.d(PermissionsPluginOptions.TAG, "Can't get activity manager while looking for package for pid: " + pid);
                 }
 
                 if (packages != null) {
                     if (packages.length > 1) {
-                        Log.d(TAG, "Warning: There are multiple packages for pid: " + pid
+                        if(PermissionsPluginOptions.DEBUG){
+                            Log.d(PermissionsPluginOptions.TAG, "Warning: There are multiple packages for pid: " + pid
                               + ", packages: " + Arrays.toString(packages)
                               + "; using the first one ...");
+                        }
                     }
                     targetPkg = packages[0];
                 }
@@ -434,7 +440,7 @@ public class PermissionsPluginManager {
             }
             return parceledList.getList();
         } catch (RemoteException e) {
-            Log.d(TAG, "Could not retrieve permissions plugin for app " + appPackage + ". RemoteException: " + e);
+            Log.d(PermissionsPluginOptions.TAG, "Could not retrieve permissions plugin for app " + appPackage + ". RemoteException: " + e);
             return Collections.emptyList();
         }
     }
