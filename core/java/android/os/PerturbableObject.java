@@ -54,9 +54,9 @@ public class PerturbableObject extends ParcelObject {
 
     public void foundNestedPerturbableObject(Perturbable perturbableType){
         Integer count = mNestedPerturbableCounts.get(perturbableType);
-        if(count == null){            
+        if (count == null) {            
             mNestedPerturbableCounts.put(perturbableType,1);
-        }else{
+        } else {
             mNestedPerturbableCounts.put(perturbableType,count+1);            
         }
     }

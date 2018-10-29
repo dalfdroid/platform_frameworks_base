@@ -603,13 +603,13 @@ public final class Parcel {
         }
 
         // Track only root objects
-        if (mPerturbablesInProgress.isEmpty()){
+        if (mPerturbablesInProgress.isEmpty()) {
             PerturbableObject perturbableObject =
                 new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
 
             mPerturbablesInProgress.add(perturbableObject);
             return true;
-        }else{
+        } else {
             // Inform root object about this nested object
             // Note: This operation assumes we track only one object (the root) at a time.
             PerturbableObject perturbableObject = mPerturbablesInProgress.getFirst();
