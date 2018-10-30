@@ -64,14 +64,13 @@ public final class BulkCursorDescriptor implements Parcelable {
         out.writeStringArray(columnNames);
         out.writeInt(wantsAllOnMoveCalls ? 1 : 0);
         out.writeInt(count);
-        boolean trackingPerturbable = false;
         if (window != null) {
             out.writeInt(1);
             if (perturbableType != null) {
-                trackingPerturbable = out.startPerturbableObject(perturbableType, window, flags, metadata);
+                out.startPerturbableObject(perturbableType, window, flags, metadata);
             }
             window.writeToParcel(out, flags);
-            if (perturbableType != null && trackingPerturbable) {
+            if (perturbableType != null) {
                 out.finishPerturbableObject();
             }
         } else {

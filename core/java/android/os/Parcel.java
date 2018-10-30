@@ -577,58 +577,61 @@ public final class Parcel {
     }
 
     /** @hide */
-    public final boolean startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
-        return startPerturbableObject(type, object, writeFlags, null);
+    public final void startPerturbableObject(Perturbable type, Parcelable object, int writeFlags) {
+        startPerturbableObject(type, object, writeFlags, null);
     }
 
-    /**
-     *
-     * Start tracking perturbable object.
-     * Only one perturbable object (root) is tracked at a time.
-     * Currently, nested perturbable objects are not tracked.
-     * @return True if the perturbable object is being tracked and false otherwise.
-     * Note: Only call finishPerturbableObject if startPerturbableObject returns true.
-     * 
-     */
     /** @hide */
-    public final boolean startPerturbableObject(Perturbable type, Parcelable object,
+    public final void startPerturbableObject(Perturbable type, Parcelable object,
             int writeFlags, Object metadata) {
 
         if (mStopRecording) {
-            return false;
+            return;
         }
 
         if (mPerturbablesInProgress == null) {
             mPerturbablesInProgress = new ArrayDeque<>();
         }
 
-        // Track only root objects
-        if (mPerturbablesInProgress.isEmpty()) {
-            PerturbableObject perturbableObject =
-                new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
-
-            mPerturbablesInProgress.add(perturbableObject);
-            return true;
-        } else {
-            // Inform root object about this nested object
-            // Note: This operation assumes we track only one object (the root) at a time.
-            PerturbableObject perturbableObject = mPerturbablesInProgress.getFirst();
-            perturbableObject.foundNestedPerturbableObject(type);
-            return false;
-        }
-
+	// Eventhough we do not record nested perturbables,
+	// here we track all the objects. Nested objects
+	// will be dropped in the finishPerturbableObject method.
+	// TODO: Optimize it for performance.
+        PerturbableObject perturbableObject = new PerturbableObject(type, object, dataPosition(), writeFlags, metadata);
+        mPerturbablesInProgress.addLast(perturbableObject);
+		
     }
 
+    /**
+     *
+     * Record perturbable object.
+     * Only one perturbable object (root) is recorded at a time.
+     * Currently, nested perturbable objects are not recorded.
+     * If we encounter a nested perturbable object, we
+     * inform the root object and discard the nested object.
+     * Note: This function assumes that there are no overlapping
+     * perturbable objects. It means the objects are either nested
+     * (one inside the other) or clearly separated.
+     * 
+     */
     /** @hide */
     public final void finishPerturbableObject() {
         if (mStopRecording) {
             return;
         }
 
-        PerturbableObject perturbableObject = mPerturbablesInProgress.pop();
+        PerturbableObject perturbableObject = mPerturbablesInProgress.removeLast();
         perturbableObject.setEndPos(dataPosition());
-        mRecordedObjects.add(perturbableObject);
-        mHasPerturbables = true;
+
+        if (mPerturbablesInProgress.isEmpty()) {
+            // Root perturbable object
+            mRecordedObjects.add(perturbableObject);
+            mHasPerturbables = true;
+        } else {
+            // Nested perturbable object
+            PerturbableObject rootPerturbable = mPerturbablesInProgress.getFirst();
+            rootPerturbable.foundNestedPerturbableObject(perturbableObject.mPerturbableType);
+        }
     }
 
     /** @hide */

@@ -1099,7 +1099,7 @@ public class Location implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel parcel, int flags) {
-        boolean trackingPerturbable = parcel.startPerturbableObject(Perturbable.LOCATION, this, flags);
+        parcel.startPerturbableObject(Perturbable.LOCATION, this, flags);
         parcel.writeString(mProvider);
         parcel.writeLong(mTime);
         parcel.writeLong(mElapsedRealtimeNanos);
@@ -1114,7 +1114,7 @@ public class Location implements Parcelable {
         parcel.writeFloat(mSpeedAccuracyMetersPerSecond);
         parcel.writeFloat(mBearingAccuracyDegrees);
         parcel.writeBundle(mExtras);
-        if(trackingPerturbable) parcel.finishPerturbableObject();
+        parcel.finishPerturbableObject();
     }
 
     /**
