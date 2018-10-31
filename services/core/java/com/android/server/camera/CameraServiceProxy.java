@@ -19,6 +19,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.CameraStreamInfo;
 import android.hardware.ICameraService;
 import android.hardware.ICameraServiceProxy;
 import android.metrics.LogMaker;
@@ -35,6 +36,7 @@ import android.os.UserManager;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Slog;
+import android.view.Surface;
 
 import com.android.internal.logging.MetricsLogger;
 import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
@@ -175,6 +177,14 @@ public class CameraServiceProxy extends SystemService
                     state + " for client " + clientName);
 
             updateActivityCount(cameraId, newCameraState, facing, clientName);
+        }
+
+        @Override
+        public Surface reportCameraStream(String packageName,
+                CameraStreamInfo cameraStreamInfo) {
+            // TODO(ali): Return a surface from a plugin that wants to interpose
+            // on the camera stream and null otherwise.
+            return null;
         }
     };
 
