@@ -28,6 +28,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PermissionsPluginManager;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
@@ -182,9 +183,8 @@ public class CameraServiceProxy extends SystemService
         @Override
         public Surface reportCameraStream(String packageName,
                 CameraStreamInfo cameraStreamInfo) {
-            // TODO(ali): Return a surface from a plugin that wants to interpose
-            // on the camera stream and null otherwise.
-            return null;
+            return PermissionsPluginManager.reportCameraStream(packageName,
+                cameraStreamInfo);
         }
     };
 

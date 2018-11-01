@@ -31,8 +31,17 @@ public interface IPluginService extends IInterface
      */
     public IPluginCalendarInterposer getCalendarInterposer() throws RemoteException;
 
+    /**
+     * Returns the camera interposer of this plugin. May return null if the
+     * plugin does not interpose on the camera.
+     *
+     * @return The camera interposer of this plugin.
+     */
+    public IPluginCameraInterposer getCameraInterposer() throws RemoteException;
+
     static final String descriptor = "android.os.IPluginService";
     static final int TRANSACTION_getLocationInterposer = (IBinder.FIRST_CALL_TRANSACTION + 0);
     static final int TRANSACTION_getContactsInterposer = (IBinder.FIRST_CALL_TRANSACTION + 1);
     static final int TRANSACTION_getCalendarInterposer = (IBinder.FIRST_CALL_TRANSACTION + 2);
+    static final int TRANSACTION_getCameraInterposer = (IBinder.FIRST_CALL_TRANSACTION + 3);
 }

@@ -17,7 +17,14 @@ public enum Perturbable {
     CONTACTS,
 
     /** Instances of the {@link android.database.CursorWindow} class. */
-    CALENDAR;
+    CALENDAR,
+
+    /**
+     * At the moment, there are no Camera perturbables yet because camera
+     * interposition is handled in a different manner. This enum value is here
+     * for the sake of completeness.
+     */
+    CAMERA;
 
     public static Perturbable getReturnTypeFor(Uri url) {
         if (url != null) {

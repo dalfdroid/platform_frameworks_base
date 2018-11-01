@@ -27,6 +27,7 @@ public class PluginProxy {
     public static final String INTERPOSER_LOCATION = "location";
     public static final String INTERPOSER_CONTACTS = "contacts";
     public static final String INTERPOSER_CALENDAR = "calendar";
+    public static final String INTERPOSER_CAMERA = "camera";
 
     private final String mPackage;
     private final List<String> mInterposers;
@@ -37,6 +38,7 @@ public class PluginProxy {
     private IPluginLocationInterposer mLocationInterposer = null;
     private IPluginContactsInterposer mContactsInterposer = null;
     private IPluginCalendarInterposer mCalendarInterposer = null;
+    private PluginCameraInterposerProxy mCameraInterposer = null;
 
     private boolean mConnecting = false;
     private boolean mConnected = false;
@@ -120,6 +122,13 @@ public class PluginProxy {
                         mCalendarInterposer =
                             IPluginCalendarInterposer.Stub.asInterface(binder);
                     }
+                } else if (interposer.equals(INTERPOSER_CAMERA)) {
+                    IBinder binder = mService.getCameraInterposerRaw();
+                    if (binder != null) {
+                        binder = Binder.allowBlocking(binder);
+                        mCameraInterposer =
+                            PluginCameraInterposer.asInterface(binder);
+                    }
                 }
             } catch (RemoteException ex) {
                 Log.d(PermissionsPluginOptions.TAG, "Could not get " + interposer + " interposer from plugin service " + mPackage);
@@ -179,6 +188,10 @@ public class PluginProxy {
 
     public IPluginCalendarInterposer getCalendarInterposer() {
         return mCalendarInterposer;
+    }
+
+    public PluginCameraInterposerProxy getCameraInterposer() {
+        return mCameraInterposer;
     }
 
     public String getPackage() {

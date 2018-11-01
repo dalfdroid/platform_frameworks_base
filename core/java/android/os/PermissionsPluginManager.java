@@ -1,15 +1,17 @@
 package android.os;
 
 import android.app.ActivityManager.RunningAppProcessInfo;
-import android.app.ActivityThread;
 import android.app.ActivityManager;
+import android.app.ActivityThread;
 import android.app.IActivityManager;
 import android.content.pm.ParceledListSlice;
 import android.database.BulkCursorDescriptor;
 import android.database.CursorWindow;
+import android.hardware.CameraStreamInfo;
 import android.location.Location;
 import android.net.Uri;
 import android.util.Log;
+import android.view.Surface;
 
 import com.android.permissionsplugin.PermissionsPlugin;
 import com.android.permissionsplugin.PermissionsPluginOptions;
@@ -428,6 +430,69 @@ public class PermissionsPluginManager {
             copySourceToTargetParcel(sourceParcel, targetParcel,
                 sourceParcel.getRecordedObjects());
         }
+    }
+
+    private Surface reportCameraStreamImpl(String targetPkg,
+            CameraStreamInfo cameraStreamInfo) {
+
+        // Check if any active plugin is available for the target package.
+        // If so, proceed with the rest of the code. Otherwise, return null.
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
+                  " active plugins for app: " + targetPkg);
+        }
+
+        if (pluginList == null || pluginList.isEmpty()) {
+            return null;
+        }
+
+        // TODO: For now, we only support one active plugin per app.  In
+        // particular, we consider the first available active plugin.  In
+        // future, we should take into account multiple plugins applied to the
+        // same app.
+        PermissionsPlugin plugin = pluginList.get(0);
+
+        PluginProxy pluginProxy =
+            connectToPluginService(plugin.packageName, plugin.supportedAPIs);
+
+        if (pluginProxy == null || !pluginProxy.isConnected()) {
+            return null;
+        }
+
+        Surface result = null;
+
+        try {
+            PluginCameraInterposerProxy cameraInterposer =
+                pluginProxy.getCameraInterposer();
+            if (cameraInterposer != null) {
+                result = cameraInterposer.reportCameraStream(targetPkg,
+                    cameraStreamInfo);
+            } else {
+                Log.d(PermissionsPluginOptions.TAG, "Plugin " + plugin
+                    + " does not have a camera interposer even though it's activated for "
+                    + targetPkg);
+            }
+        } catch (Exception ex) {
+            Log.d(PermissionsPluginOptions.TAG,
+                "Unexpected exception while reporting camera stream to proxy: " + ex);
+        }
+
+        return result;
+    }
+
+    /**
+     * Reports a camera stream to the plugin and returns a new surface target if
+     * the plugin decides to interpose on the stream.
+     *
+     * @return A new surface for the stream to render into, or null if the
+     * plugin does not want to interpose on the stream.
+     */
+    public static Surface reportCameraStream(String packageName,
+            CameraStreamInfo cameraStreamInfo) {
+
+        PermissionsPluginManager local = getInstance();
+        return local.reportCameraStreamImpl(packageName, cameraStreamInfo);
     }
 
     // Retrieve list of active permissions plugin for a given package    

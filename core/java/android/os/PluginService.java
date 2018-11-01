@@ -92,6 +92,22 @@ public abstract class PluginService extends Binder implements IPluginService
                 return true;
             }
 
+        case TRANSACTION_getCameraInterposer:
+            {
+                data.enforceInterface(descriptor);
+                PluginCameraInterposer _result = (PluginCameraInterposer)
+                    this.getCameraInterposer();
+                reply.writeNoException();
+
+                IBinder val = null;
+                if (_result != null) {
+                    val = _result.asBinder();
+                }
+                reply.writeStrongBinder(val);
+
+                return true;
+            }
+
         }
 
         return super.onTransact(code, data, reply, flags);
@@ -142,6 +158,13 @@ final class PluginServiceProxy implements IPluginService
         throw new RemoteException(errorMsg);
     }
 
+    @Override
+    public IPluginCameraInterposer getCameraInterposer() throws RemoteException
+    {
+        String errorMsg = "Use getCameraInterposerRaw() instead!";
+        Log.d(PermissionsPluginOptions.TAG, errorMsg);
+        throw new RemoteException(errorMsg);
+    }
 
     /**
      * Returns the raw IBinder of the location interposer of this
@@ -212,4 +235,26 @@ final class PluginServiceProxy implements IPluginService
         return _result;
     }
 
+    /**
+     * Returns the raw IBinder of the camera interposer of this
+     * plugin. Transform it into the interface version manually.
+     */
+    public IBinder getCameraInterposerRaw() throws RemoteException {
+        Parcel _data = Parcel.obtain();
+        Parcel _reply = Parcel.obtain();
+        IBinder _result;
+
+        try {
+            _data.writeInterfaceToken(descriptor);
+            mRemote.transact(TRANSACTION_getCameraInterposer, _data, _reply, 0);
+            _reply.readException();
+
+            _result = _reply.readStrongBinder();
+        }
+        finally {
+            _reply.recycle();
+            _data.recycle();
+        }
+        return _result;
+    }
 }
