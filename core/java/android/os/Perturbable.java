@@ -16,6 +16,7 @@ public enum Perturbable {
     /** Instances of the {@link android.database.CursorWindow} class. */
     CONTACTS,
 
+    /** Instances of the {@link android.database.CursorWindow} class. */
     CALENDAR;
 
     public static Perturbable getReturnTypeFor(Uri url) {
