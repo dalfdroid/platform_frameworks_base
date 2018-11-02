@@ -19,17 +19,19 @@ public abstract class PluginCameraInterposer extends Binder
     private final Surface reportCameraStream(String packageName,
             CameraStreamInfo streamInfo) {
 
+        int streamId = streamInfo.getStreamId();
         int width = streamInfo.getWidth();
         int height = streamInfo.getHeight();
         int format = streamInfo.getFormat();
 
         Surface newSurface = null;
 
-        if (this.shouldInterpose(packageName, width, height, format)) {
+        if (this.shouldInterpose(packageName, streamId, width, height, format)) {
 
             if (PermissionsPluginOptions.DEBUG) {
                 Log.d(PermissionsPluginOptions.TAG, "Plugin will interpose on camera stream  "
                       + " created for package: " + packageName
+                      + ", stream id: " + streamId
                       + ", width: " + width
                       + ", height: " + height
                       + ", format: " + format);
@@ -40,6 +42,7 @@ public abstract class PluginCameraInterposer extends Binder
             if (PermissionsPluginOptions.DEBUG) {
                 Log.d(PermissionsPluginOptions.TAG, "Plugin WON'T interpose camera stream  "
                       + " created for package: " + packageName
+                      + ", stream id: " + streamId
                       + ", width: " + width
                       + ", height: " + height
                       + ", format: " + format);
@@ -121,7 +124,7 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
     }
 
     @Override
-    public boolean shouldInterpose(String packageName, int width, int height, int format) {
+    public boolean shouldInterpose(String packageName, int streamId, int width, int height, int format) {
         String errorMsg = "shouldInterpose is not meant to be called directly by the proxy!";
         throw new UnsupportedOperationException(errorMsg);
     }

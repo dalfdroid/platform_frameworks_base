@@ -16,6 +16,7 @@ public interface IPluginCameraInterposer extends IInterface
      *
      * @param packageName The package for which the camera stream is being
      * created.
+     * @param streamId The id of the disconnecting camera stream.
      * @param width The width of the frames in the camera stream.
      * @param height The height of the frames in the camera stream.
      * @param format The format of the camera stream.
@@ -23,7 +24,7 @@ public interface IPluginCameraInterposer extends IInterface
      * @return true if the plugin should interpose on the camera stream, and
      * false otherwise.
      */
-    public boolean shouldInterpose(String packageName, int width, int height, int format);
+    public boolean shouldInterpose(String packageName, int streamId, int width, int height, int format);
 
     static final String descriptor = "android.os.IPluginCameraInterposer";
 
