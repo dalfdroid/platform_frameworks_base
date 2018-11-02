@@ -481,6 +481,51 @@ public class PermissionsPluginManager {
         return result;
     }
 
+    private void reportSurfaceDisconnectionImpl(String targetPkg,
+            CameraStreamInfo cameraStreamInfo) {
+
+        // Check if any active plugin is available for the target package.
+        // If so, proceed with the rest of the code. Otherwise, return null.
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
+                  " active plugins for app: " + targetPkg);
+        }
+
+        if (pluginList == null || pluginList.isEmpty()) {
+            return;
+        }
+
+        // TODO: For now, we only support one active plugin per app.  In
+        // particular, we consider the first available active plugin.  In
+        // future, we should take into account multiple plugins applied to the
+        // same app.
+        PermissionsPlugin plugin = pluginList.get(0);
+
+        PluginProxy pluginProxy =
+            connectToPluginService(plugin.packageName, plugin.supportedAPIs);
+
+        if (pluginProxy == null || !pluginProxy.isConnected()) {
+            return;
+        }
+
+        try {
+            PluginCameraInterposerProxy cameraInterposer =
+                pluginProxy.getCameraInterposer();
+            if (cameraInterposer != null) {
+                cameraInterposer.reportSurfaceDisconnection(targetPkg,
+                    cameraStreamInfo);
+            } else {
+                Log.d(PermissionsPluginOptions.TAG, "Plugin " + targetPkg
+                    + " does not have a camera interposer even though it's activated for "
+                    + targetPkg);
+            }
+        } catch (Exception ex) {
+            Log.d(PermissionsPluginOptions.TAG,
+                "Unexpected exception while reporting surface disconnection to proxy: " + ex);
+        }
+    }
+
     /**
      * Reports a camera stream to the plugin and returns a new surface target if
      * the plugin decides to interpose on the stream.
@@ -493,6 +538,13 @@ public class PermissionsPluginManager {
 
         PermissionsPluginManager local = getInstance();
         return local.reportCameraStreamImpl(packageName, cameraStreamInfo);
+    }
+
+    public static void reportSurfaceDisconnection(String packageName,
+            CameraStreamInfo cameraStreamInfo) {
+
+        PermissionsPluginManager local = getInstance();
+        local.reportSurfaceDisconnectionImpl(packageName, cameraStreamInfo);
     }
 
     // Retrieve list of active permissions plugin for a given package    

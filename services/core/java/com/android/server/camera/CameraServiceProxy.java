@@ -186,6 +186,13 @@ public class CameraServiceProxy extends SystemService
             return PermissionsPluginManager.reportCameraStream(packageName,
                 cameraStreamInfo);
         }
+
+        @Override
+        public void reportSurfaceDisconnection(String packageName,
+                CameraStreamInfo cameraStreamInfo) {
+            PermissionsPluginManager.reportSurfaceDisconnection(packageName,
+                cameraStreamInfo);
+        }
     };
 
     public CameraServiceProxy(Context context) {

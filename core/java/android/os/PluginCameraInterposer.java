@@ -52,6 +52,20 @@ public abstract class PluginCameraInterposer extends Binder
         return newSurface;
     }
 
+    private final void reportSurfaceDisconnection(String packageName,
+            CameraStreamInfo streamInfo) {
+
+        int streamId = streamInfo.getStreamId();
+        this.streamDisconnecting(packageName, streamId);
+
+        // TODO(ali): Destroy all resources created for this camera stream.
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Plugin is receiving surface disconnection for camera stream  "
+                  + "created for package: " + packageName
+                  + ", stream id: " + streamId);
+        }
+    }
+
     /**
      * Cast an IBinder object into an PluginCameraInterposerProxy object.
      */
@@ -95,12 +109,26 @@ public abstract class PluginCameraInterposer extends Binder
 
                 return true;
             }
+
+        case TRANSACTION_reportSurfaceDisconnection:
+            {
+                data.enforceInterface(descriptor);
+
+                String packageName = data.readString();
+                CameraStreamInfo cameraStreamInfo = CameraStreamInfo.CREATOR.
+                    createFromParcel(data);
+
+                this.reportSurfaceDisconnection(packageName, cameraStreamInfo);
+                reply.writeNoException();
+                return true;
+            }
         }
 
         return super.onTransact(code, data, reply, flags);
     }
 
     static final int TRANSACTION_reportCameraStream = (TRANSACTION_FIRST_HIDDEN + 0);
+    static final int TRANSACTION_reportSurfaceDisconnection = (TRANSACTION_FIRST_HIDDEN + 1);
 }
 
 final class PluginCameraInterposerProxy implements IPluginCameraInterposer
@@ -126,6 +154,12 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
     @Override
     public boolean shouldInterpose(String packageName, int streamId, int width, int height, int format) {
         String errorMsg = "shouldInterpose is not meant to be called directly by the proxy!";
+        throw new UnsupportedOperationException(errorMsg);
+    }
+
+    @Override
+    public void streamDisconnecting(String packageName, int streamId) {
+        String errorMsg = "streamDisconnecting is not meant to be called directly by the proxy!";
         throw new UnsupportedOperationException(errorMsg);
     }
 
@@ -155,5 +189,24 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
         }
 
         return _result;
+    }
+
+    public void reportSurfaceDisconnection(String packageName,
+            CameraStreamInfo cameraStreamInfo) throws RemoteException {
+        Parcel _data = Parcel.obtain();
+        Parcel _reply = Parcel.obtain();
+
+        int transactionId = PluginCameraInterposer.TRANSACTION_reportSurfaceDisconnection;
+        try {
+            _data.writeInterfaceToken(descriptor);
+            _data.writeString(packageName);
+            cameraStreamInfo.writeToParcel(_data, 0);
+            mRemote.transact(transactionId, _data, _reply, 0);
+            _reply.readException();
+        }
+        finally {
+            _reply.recycle();
+            _data.recycle();
+        }
     }
 }

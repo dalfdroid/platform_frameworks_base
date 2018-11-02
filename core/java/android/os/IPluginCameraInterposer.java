@@ -26,6 +26,15 @@ public interface IPluginCameraInterposer extends IInterface
      */
     public boolean shouldInterpose(String packageName, int streamId, int width, int height, int format);
 
+    /**
+     * This is called when a camera stream is disconnecting. The plugin should
+     * perform all cleanup of resources associated with the given stream id.
+     *
+     * @param packageName The package that owns the camera stream.
+     * @param streamId The id of the disconnecting camera stream.
+     */
+    public void streamDisconnecting(String packageName, int streamId);
+
     static final String descriptor = "android.os.IPluginCameraInterposer";
 
     /**
