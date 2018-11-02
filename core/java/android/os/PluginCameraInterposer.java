@@ -163,6 +163,12 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
         throw new UnsupportedOperationException(errorMsg);
     }
 
+    @Override
+    public void couldNotInterpose(String packageName, int streamId) {
+        String errorMsg = "couldNotInterpose is not meant to be called directly by the proxy!";
+        throw new UnsupportedOperationException(errorMsg);
+    }
+
     public Surface reportCameraStream(String packageName, CameraStreamInfo cameraStreamInfo)
             throws RemoteException{
         Parcel _data = Parcel.obtain();

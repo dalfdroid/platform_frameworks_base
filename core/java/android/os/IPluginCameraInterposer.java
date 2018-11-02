@@ -27,6 +27,17 @@ public interface IPluginCameraInterposer extends IInterface
     public boolean shouldInterpose(String packageName, int streamId, int width, int height, int format);
 
     /**
+     * This is called when the framework is unable to interpose on a stream that
+     * the plugin wanted to. This is called if a plugin returns true in {#link
+     * shouldInterpose}.
+     *
+     * @param packageName, The package for which the camera stream is being
+     * created.
+     * @param streamId The id of the stream that could not be interposed.
+     */
+    public void couldNotInterpose(String packageName, int streamId);
+
+    /**
      * This is called when a camera stream is disconnecting. The plugin should
      * perform all cleanup of resources associated with the given stream id.
      *
