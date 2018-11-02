@@ -16,7 +16,7 @@ public abstract class PluginCameraInterposer extends Binder
         attachInterface(this, descriptor);
     }
 
-    private final Surface reportCameraStream(String packageName,
+    private final synchronized Surface reportCameraStream(String packageName,
             CameraStreamInfo streamInfo) {
 
         int streamId = streamInfo.getStreamId();
@@ -52,7 +52,7 @@ public abstract class PluginCameraInterposer extends Binder
         return newSurface;
     }
 
-    private final void reportSurfaceDisconnection(String packageName,
+    private final synchronized void reportSurfaceDisconnection(String packageName,
             CameraStreamInfo streamInfo) {
 
         int streamId = streamInfo.getStreamId();
