@@ -12,10 +12,19 @@ import android.view.Surface;
  */
 public final class CameraStreamInfo implements Parcelable {
 
+    private int mStreamId;
     private int mWidth;
     private int mHeight;
     private int mFormat;
     private Surface mSurface;
+
+    /**
+     * Returns the camera stream id.
+     * @return the camera stream id.
+     */
+    public int getStreamId() {
+        return mStreamId;
+    }
 
     /**
      * Returns the width of the camera stream.
@@ -68,6 +77,7 @@ public final class CameraStreamInfo implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(mStreamId);
         dest.writeInt(mWidth);
         dest.writeInt(mHeight);
         dest.writeInt(mFormat);
@@ -75,6 +85,7 @@ public final class CameraStreamInfo implements Parcelable {
     }
 
     private void readFromParcel(Parcel in) {
+        mStreamId = in.readInt();
         mWidth = in.readInt();
         mHeight = in.readInt();
         mFormat = in.readInt();
@@ -89,8 +100,9 @@ public final class CameraStreamInfo implements Parcelable {
 
     @Override
     public String toString() {
-        return "[[CameraStreamInfo] "
-            + "mWidth = " + mWidth
+        return "[[CameraStreamInfo]"
+            + " mStreamId = " + mStreamId
+            + ", mWidth = " + mWidth
             + ", mHeight = " + mHeight
             + ", mFormat = " + mFormat
             + ", mSurface = " + mSurface
