@@ -252,7 +252,7 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
 
     @Override
     public void onFrameAvailable(String packageName, int streamId, int width,
-            int height, int stride, long framePtr) {
+            int height, int stride, int format, long framePtr) {
         String errorMsg = "onFrameAvailable is not meant to be called directly by the proxy!";
         throw new UnsupportedOperationException(errorMsg);
     }

@@ -108,7 +108,7 @@ public class InterposableSurface implements AutoCloseable {
 
     private void onFrameAvailable(int stride, long nativePtr) {
         mInterposer.onFrameAvailable(mPackageName, mStreamId, mWidth, mHeight,
-            stride, nativePtr);
+            stride, mFormat, nativePtr);
     }
 
     private synchronized native boolean nativeInit(int streamId, Surface mTargetSurface);

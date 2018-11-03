@@ -42,16 +42,20 @@ public interface IPluginCameraInterposer extends IInterface
      * interpose on the frame now. Once the method returns, the frame will be
      * delivered to the app.
      *
+     * // TODO(ali/nisarg): Pass a friendlier format object rather than an
+     * internally-defined integer.
+     *
      * @param packageName The package name of the app that will received the frame.
      * @param streamId The id of the camera stream delivering the frame.
      * @param width The width of the frame.
      * @param height The height of the frame.
      * @param stride The stride of the frame.
+     * @param format The format of the frame.
      * @param A uint8_t* pointer of the frame. Cast this value back into
      * uint8_t* within the JNI layer.
      */
     public void onFrameAvailable(String packageName, int streamId, int width,
-            int height, int stride, long framePtr);
+            int height, int stride, int format, long framePtr);
 
     /**
      * This is called when a camera stream is disconnecting. The plugin should
