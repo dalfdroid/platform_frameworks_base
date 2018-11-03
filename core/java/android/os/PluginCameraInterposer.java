@@ -60,7 +60,9 @@ public abstract class PluginCameraInterposer extends Binder
             return null;
         }
 
-        ipSurface = new InterposableSurface(streamId, width, height, format, streamInfo.getSurface());
+        ipSurface = new InterposableSurface(packageName, this, streamId, width,
+            height, format, streamInfo.getSurface());
+
         if (!ipSurface.isInitialized()) {
             if (PermissionsPluginOptions.DEBUG) {
                 Log.d(PermissionsPluginOptions.TAG, "Plugin coudl not interpose on camera stream"
@@ -245,6 +247,13 @@ final class PluginCameraInterposerProxy implements IPluginCameraInterposer
     @Override
     public void couldNotInterpose(String packageName, int streamId) {
         String errorMsg = "couldNotInterpose is not meant to be called directly by the proxy!";
+        throw new UnsupportedOperationException(errorMsg);
+    }
+
+    @Override
+    public void onFrameAvailable(String packageName, int streamId, int width,
+            int height, int stride, long framePtr) {
+        String errorMsg = "onFrameAvailable is not meant to be called directly by the proxy!";
         throw new UnsupportedOperationException(errorMsg);
     }
 

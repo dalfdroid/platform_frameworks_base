@@ -160,7 +160,8 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
         return;
     }
 
-    mEnv->CallVoidMethod(mThiz, javaClassInfo.onFrameAvailable, (jlong)imgData);
+    mEnv->CallVoidMethod(mThiz, javaClassInfo.onFrameAvailable,
+        (jint)buf->getStride(), (jlong)imgData);
 
     res = buf->unlock();
     imgData = NULL;
@@ -218,7 +219,7 @@ static void InterposableSurface_classInit(JNIEnv* env, jclass clazz)
     }
 
     javaClassInfo.onFrameAvailable = env->GetMethodID(clazz,
-            ANDROID_VIEW_INTERPOSABLESURFACE_ONFRAMEAVAILABLE, "(J)V");
+            ANDROID_VIEW_INTERPOSABLESURFACE_ONFRAMEAVAILABLE, "(IJ)V");
 
     if (javaClassInfo.onFrameAvailable == NULL) {
         LOG_ERROR_DALF("can't find android/view/InterposableSurface.%s",

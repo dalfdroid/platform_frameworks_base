@@ -38,6 +38,22 @@ public interface IPluginCameraInterposer extends IInterface
     public void couldNotInterpose(String packageName, int streamId);
 
     /**
+     * This is called when the framework receives a new frame. The plugin should
+     * interpose on the frame now. Once the method returns, the frame will be
+     * delivered to the app.
+     *
+     * @param packageName The package name of the app that will received the frame.
+     * @param streamId The id of the camera stream delivering the frame.
+     * @param width The width of the frame.
+     * @param height The height of the frame.
+     * @param stride The stride of the frame.
+     * @param A uint8_t* pointer of the frame. Cast this value back into
+     * uint8_t* within the JNI layer.
+     */
+    public void onFrameAvailable(String packageName, int streamId, int width,
+            int height, int stride, long framePtr);
+
+    /**
      * This is called when a camera stream is disconnecting. The plugin should
      * perform all cleanup of resources associated with the given stream id.
      *

@@ -1,5 +1,6 @@
 package android.view;
 
+import android.os.IPluginCameraInterposer;
 import android.util.Log;
 
 import com.android.permissionsplugin.PermissionsPluginOptions;
@@ -16,6 +17,9 @@ public class InterposableSurface implements AutoCloseable {
      * Indicates if this interposable surface is valid for use.
      */
     private boolean mInitialized;
+
+    private final String mPackageName;
+    private final IPluginCameraInterposer mInterposer;
 
     private final int mStreamId;
     private final int mWidth;
@@ -41,6 +45,9 @@ public class InterposableSurface implements AutoCloseable {
      * Creates a new instance of the interposable surface. See also {@link
      * #isInitialized}.
      *
+     * @param packageName The package name of the app that is being interposed
+     * on.
+     * @param interposer The camera interposer in charge of this surface.
      * @param streamId The id of the camera stream for which this interposable
      * surface is being created.
      * @param width The width of the camera frames that will be rendered.
@@ -49,8 +56,11 @@ public class InterposableSurface implements AutoCloseable {
      * @param destinationSurface The surface object where the frames should
      * finally be rendered after they have been modified.
      */
-    public InterposableSurface(int streamId, int width, int height, int format,
+    public InterposableSurface(String packageName, IPluginCameraInterposer interposer,
+            int streamId, int width, int height, int format,
             Surface destinationSurface) {
+        mPackageName = packageName;
+        mInterposer = interposer;
         mStreamId = streamId;
         mWidth = width;
         mHeight = height;
@@ -96,8 +106,9 @@ public class InterposableSurface implements AutoCloseable {
         mInitialized = false;
     }
 
-    private void onFrameAvailable(long nativePtr) {
-        // TODO (ali) This should call into the plugin.
+    private void onFrameAvailable(int stride, long nativePtr) {
+        mInterposer.onFrameAvailable(mPackageName, mStreamId, mWidth, mHeight,
+            stride, nativePtr);
     }
 
     private synchronized native boolean nativeInit(int streamId, Surface mTargetSurface);
