@@ -1,16 +1,23 @@
 package android.os;
 
-import android.util.Log;
-import android.view.Surface;
 import android.hardware.CameraStreamInfo;
+import android.util.ArrayMap;
+import android.util.Log;
+import android.view.InterposableSurface;
+import android.view.Surface;
 
 import com.android.permissionsplugin.PermissionsPluginOptions;
+
+import java.util.Objects;
 
 /**
  * @hide
  */
 public abstract class PluginCameraInterposer extends Binder
         implements IPluginCameraInterposer {
+
+    private ArrayMap<StreamRecord, InterposableSurface>
+        mStreams;
 
     public PluginCameraInterposer() {
         attachInterface(this, descriptor);
@@ -19,50 +26,122 @@ public abstract class PluginCameraInterposer extends Binder
     private final synchronized Surface reportCameraStream(String packageName,
             CameraStreamInfo streamInfo) {
 
+        if (mStreams == null) {
+            mStreams = new ArrayMap<>();
+        }
+
         int streamId = streamInfo.getStreamId();
+
+        StreamRecord record = new StreamRecord(streamId, packageName);
+        InterposableSurface ipSurface = mStreams.get(record);
+        if (ipSurface != null) {
+            Log.d(PermissionsPluginOptions.TAG, "Unexpectedly receiving a camera stream report"
+                  + " packageName: " + packageName
+                  + ", stream info: " + streamInfo
+                  + ". Returning previous interposable surface.");
+            return ipSurface.getNewSurface();
+        }
+
         int width = streamInfo.getWidth();
         int height = streamInfo.getHeight();
         int format = streamInfo.getFormat();
 
-        Surface newSurface = null;
-
-        if (this.shouldInterpose(packageName, streamId, width, height, format)) {
-
-            if (PermissionsPluginOptions.DEBUG) {
-                Log.d(PermissionsPluginOptions.TAG, "Plugin will interpose on camera stream  "
-                      + " created for package: " + packageName
-                      + ", stream id: " + streamId
-                      + ", width: " + width
-                      + ", height: " + height
-                      + ", format: " + format);
-            }
-
-            // TODO(ali): Create the new surface target to return.
-        } else {
+        if (!this.shouldInterpose(packageName, streamId, width, height, format)) {
             if (PermissionsPluginOptions.DEBUG) {
                 Log.d(PermissionsPluginOptions.TAG, "Plugin WON'T interpose camera stream  "
                       + " created for package: " + packageName
                       + ", stream id: " + streamId
                       + ", width: " + width
                       + ", height: " + height
-                      + ", format: " + format);
+                      + ", format: " + format
+                      + ", surface; " + streamInfo.getSurface());
             }
+
+            return null;
         }
 
-        return newSurface;
+        ipSurface = new InterposableSurface(streamId, width, height, format, streamInfo.getSurface());
+        if (!ipSurface.isInitialized()) {
+            if (PermissionsPluginOptions.DEBUG) {
+                Log.d(PermissionsPluginOptions.TAG, "Plugin coudl not interpose on camera stream"
+                      + " created for package: " + packageName
+                      + ", stream id: " + streamId
+                      + ", width: " + width
+                      + ", height: " + height
+                      + ", format: " + format
+                      + ", surface: " + streamInfo.getSurface());
+            }
+
+            this.couldNotInterpose(packageName, streamId);
+            return null;
+        }
+
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Plugin will interpose on camera stream"
+                  + " created for package: " + packageName
+                  + ", stream id: " + streamId
+                  + ", width: " + width
+                  + ", height: " + height
+                  + ", format: " + format
+                  + ", surface: " + streamInfo.getSurface());
+        }
+
+        mStreams.put(record, ipSurface);
+        return ipSurface.getNewSurface();
     }
 
     private final synchronized void reportSurfaceDisconnection(String packageName,
             CameraStreamInfo streamInfo) {
 
-        int streamId = streamInfo.getStreamId();
-        this.streamDisconnecting(packageName, streamId);
+        if (mStreams == null) {
+            return;
+        }
 
-        // TODO(ali): Destroy all resources created for this camera stream.
+        int streamId = streamInfo.getStreamId();
+
+        StreamRecord record = new StreamRecord(streamId, packageName);
+        InterposableSurface ipSurface = mStreams.get(record);
+        if (ipSurface == null) {
+            Log.d(PermissionsPluginOptions.TAG, "Unexpectedly receiving a surface disconnection report"
+                  + " packageName: " + packageName
+                  + ", stream info: " + streamInfo
+                  + ". Doing nothing.");
+            return;
+        }
+
+        this.streamDisconnecting(packageName, streamId);
         if (PermissionsPluginOptions.DEBUG) {
-            Log.d(PermissionsPluginOptions.TAG, "Plugin is receiving surface disconnection for camera stream  "
-                  + "created for package: " + packageName
+            Log.d(PermissionsPluginOptions.TAG, "Going to close interposable surface"
+                  + " created for package: " + packageName
                   + ", stream id: " + streamId);
+        }
+
+        ipSurface.close();
+        mStreams.remove(record);
+    }
+
+    private static final class StreamRecord {
+        private final int mStreamId;
+        private final String mPackageName;
+        private StreamRecord(int streamId, String packageName) {
+            mStreamId = streamId;
+            mPackageName = packageName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            // Auto-generated using IntelliJ Idea
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            StreamRecord that = (StreamRecord) o;
+            return mStreamId == that.mStreamId &&
+                Objects.equals(mPackageName, that.mPackageName);
+        }
+
+        @Override
+        public int hashCode() {
+            // Auto-generated using IntelliJ Idea
+            return Objects.hash(mStreamId, mPackageName);
         }
     }
 

@@ -136,6 +136,7 @@ extern int register_android_graphics_pdf_PdfRenderer(JNIEnv* env);
 extern int register_android_view_DisplayEventReceiver(JNIEnv* env);
 extern int register_android_view_DisplayListCanvas(JNIEnv* env);
 extern int register_android_view_HardwareLayer(JNIEnv* env);
+extern int register_android_view_InterposableSurface(JNIEnv* env);
 extern int register_android_view_RenderNode(JNIEnv* env);
 extern int register_android_view_RenderNodeAnimator(JNIEnv* env);
 extern int register_android_view_Surface(JNIEnv* env);
@@ -1354,6 +1355,7 @@ static const RegJNIRec gRegJNI[] = {
     REG_JNI(register_android_view_RenderNodeAnimator),
     REG_JNI(register_android_view_DisplayListCanvas),
     REG_JNI(register_android_view_HardwareLayer),
+    REG_JNI(register_android_view_InterposableSurface),
     REG_JNI(register_android_view_ThreadedRenderer),
     REG_JNI(register_android_view_Surface),
     REG_JNI(register_android_view_SurfaceControl),
