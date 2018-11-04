@@ -39,68 +39,51 @@ public class PermissionsPluginManager {
     private static final HashMap<Integer, String> pidsToPackage
         = new HashMap<>();
 
-    private static boolean mConnectMethodInUse = false;
+    private static synchronized PluginProxy connectToPluginService(
+            String pluginPackage, List<String> interposers) {
 
-    private static PluginProxy connectToPluginService(String pluginPackage,
-        List<String> interposers) {
+        PluginProxy pluginProxy = sPluginProxies.get(pluginPackage);
+        if (pluginProxy == null) {
+            pluginProxy = new PluginProxy(pluginPackage, interposers);
+            sPluginProxies.put(pluginPackage, pluginProxy);
+        }
 
-        synchronized (sPluginProxies) {
-            while (mConnectMethodInUse) {
-                try {
-                    sPluginProxies.wait();
-                } catch (InterruptedException ex) {
-                    Log.d(PermissionsPluginOptions.TAG, "Unexpected interruption while waiting to connect to " +
-                          pluginPackage + ". Aborting ...");
-                    return null;
-                }
-            }
-            mConnectMethodInUse = true;
-
-            PluginProxy pluginProxy = sPluginProxies.get(pluginPackage);
-            if (pluginProxy == null) {
-                pluginProxy = new PluginProxy(pluginPackage, interposers);
-                sPluginProxies.put(pluginPackage, pluginProxy);
-            }
-
-            if (pluginProxy.isConnected()) {
-                mConnectMethodInUse = false;
-                return pluginProxy;
-            }
-
-            if (PermissionsPluginOptions.DEBUG) {
-                Log.d(PermissionsPluginOptions.TAG, "Connecting to plugin service: " + pluginPackage +
-                      " with interposers " + interposers);
-            }
-
-            boolean startedConnecting = pluginProxy.connect();
-            if (!startedConnecting) {
-                Log.d(PermissionsPluginOptions.TAG, "Failed to try bind service to : " + pluginPackage);
-                mConnectMethodInUse = false;
-                return pluginProxy;
-            }
-
-            synchronized(pluginProxy) {
-                while (pluginProxy.isTryingToConnect() &&
-                       !pluginProxy.isConnected()) {
-                    try {
-                        pluginProxy.wait();
-                    } catch (InterruptedException ex) {
-                        break;
-                    }
-                }
-            }
-
-            if (!pluginProxy.isConnected()) {
-                Log.d(PermissionsPluginOptions.TAG, "Attempt to connect to plugin service " + pluginPackage + " ultimately failed!");
-            } else {
-                if (PermissionsPluginOptions.DEBUG) {
-                    Log.d(PermissionsPluginOptions.TAG, "Connected to: " + pluginPackage);
-                }
-            }
-
-            mConnectMethodInUse = false;
+        if (pluginProxy.isConnected()) {
             return pluginProxy;
         }
+
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Connecting to plugin service: " + pluginPackage +
+                  " with interposers " + interposers);
+        }
+
+        boolean startedConnecting = pluginProxy.connect();
+        if (!startedConnecting) {
+            Log.d(PermissionsPluginOptions.TAG, "Failed to try bind service to : " + pluginPackage);
+            return pluginProxy;
+        }
+
+        synchronized(pluginProxy) {
+            while (pluginProxy.isTryingToConnect() &&
+                   !pluginProxy.isConnected()) {
+                try {
+                    pluginProxy.wait();
+                } catch (InterruptedException ex) {
+                    break;
+                }
+            }
+        }
+
+        if (!pluginProxy.isConnected()) {
+            Log.d(PermissionsPluginOptions.TAG, "Attempt to connect to plugin service "
+                  + pluginPackage + " ultimately failed!");
+        } else {
+            if (PermissionsPluginOptions.DEBUG) {
+                Log.d(PermissionsPluginOptions.TAG, "Connected to: " + pluginPackage);
+            }
+        }
+
+        return pluginProxy;
     }
 
     private static void copySourceToTargetParcel(Parcel sourceParcel,
