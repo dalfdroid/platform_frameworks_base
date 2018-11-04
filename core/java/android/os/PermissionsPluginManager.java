@@ -390,7 +390,7 @@ public class PermissionsPluginManager {
     /**
      * {@hide}
      */
-    public static Parcel perturbAllData(int targetPid, Parcel sourceParcel) {
+    public static Parcel perturbDataForBinderProxy(int targetPid, Parcel sourceParcel) {
 
         if (!sourceParcel.hasPerturbables()) {
             return null;

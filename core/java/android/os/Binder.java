@@ -768,7 +768,7 @@ final class BinderProxy implements IBinder {
     }
 
     public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-        Parcel perturbedParcel = PermissionsPluginManager.perturbAllData(mTargetPid, data);
+        Parcel perturbedParcel = PermissionsPluginManager.perturbDataForBinderProxy(mTargetPid, data);
         Parcel parcelToSend = (perturbedParcel == null) ? data : perturbedParcel;
 
         Binder.checkParcel(this, code, parcelToSend, "Unreasonably large binder buffer");
