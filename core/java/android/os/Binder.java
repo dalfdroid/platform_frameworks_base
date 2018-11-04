@@ -731,7 +731,7 @@ public class Binder implements IBinder {
         if (temp != null) {
             // Fixup the reply parcel by copying into it data from the temporary
             // parcel. During this process, perturb all data.
-            PermissionsPluginManager.fixupTargetParcel(getCallingPid(), temp, reply);
+            PermissionsPluginManager.fixupParcelForBinder(getCallingPid(), temp, reply);
             temp.recycle();
             temp = null;
         }

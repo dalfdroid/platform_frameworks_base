@@ -407,7 +407,7 @@ public class PermissionsPluginManager {
     /**
      * {@hide}
      */
-    public static void fixupTargetParcel(int callingPid, Parcel sourceParcel, Parcel targetParcel) {
+    public static void fixupParcelForBinder(int callingPid, Parcel sourceParcel, Parcel targetParcel) {
 
         if (!sourceParcel.hasPerturbables()) {
             copySourceToTargetParcel(sourceParcel, targetParcel,
