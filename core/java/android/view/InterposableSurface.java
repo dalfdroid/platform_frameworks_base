@@ -5,6 +5,8 @@ import android.util.Log;
 
 import com.android.permissionsplugin.PermissionsPluginOptions;
 
+import java.lang.ref.WeakReference;
+
 /**
  * This is a special surface object that allows us to modify camera frames
  * rendered to a new surface target before they are are delivered to the app.
@@ -67,7 +69,7 @@ public class InterposableSurface implements AutoCloseable {
         mFormat = format;
         mDestinationSurface = destinationSurface;
 
-        mInitialized = nativeInit(mStreamId, mDestinationSurface);
+        mInitialized = nativeInit(new WeakReference<InterposableSurface>(this), mStreamId, mDestinationSurface);
         if (mInitialized) {
             mSourceSurface = nativeGetSourceSurface();
         } else {
@@ -111,7 +113,7 @@ public class InterposableSurface implements AutoCloseable {
             stride, mFormat, nativePtr);
     }
 
-    private synchronized native boolean nativeInit(int streamId, Surface mTargetSurface);
+    private synchronized native boolean nativeInit(WeakReference<InterposableSurface> weakThiz, int streamId, Surface mTargetSurface);
     private synchronized native Surface nativeGetSourceSurface();
     private synchronized native void nativeClose();
 }

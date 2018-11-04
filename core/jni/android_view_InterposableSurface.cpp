@@ -1,6 +1,8 @@
 #define LOG_TAG "Dalf"
 
 #include <stdio.h>
+
+#include <android_runtime/AndroidRuntime.h>
 #include <gui/BufferItemConsumer.h>
 #include <gui/Surface.h>
 #include <gui/BufferQueue.h>
@@ -42,7 +44,7 @@ class InterposableSurface : public ConsumerBase::FrameAvailableListener,
                             public BnProducerListener
 {
 public:
-    InterposableSurface(JNIEnv* env, jobject thiz, int streamId,
+    InterposableSurface(jobject interposableSurfaceObj, int streamId,
             const sp<Surface>& targetSurface);
 
     sp<Surface>   getSourceSurface() { return mSourceSurface; }
@@ -66,8 +68,7 @@ private:
     const int                   mStreamId;
     const sp<Surface>           mDestinationSurface;
 
-    JNIEnv*                     mEnv;
-    jobject                     mThiz;
+    jobject                     mInterposableSurfaceObj;
 
     bool                        mInitialized = false;
 
@@ -82,14 +83,14 @@ private:
     BufferItem*                 mBufferItem;
 };
 
-InterposableSurface::InterposableSurface(JNIEnv* env, jobject thiz, int streamId,
+InterposableSurface::InterposableSurface(jobject interposableSurfaceObj, int streamId,
         const sp<Surface>& destinationSurface)
     :
       mStreamId(streamId),
-      mDestinationSurface(destinationSurface),
-      mEnv(env),
-      mThiz(env->NewGlobalRef(thiz))
+      mDestinationSurface(destinationSurface)
 {
+    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    mInterposableSurfaceObj = env->NewGlobalRef(interposableSurfaceObj);
     mInitialized = false;
 }
 
@@ -101,7 +102,9 @@ void InterposableSurface::disconnect() {
         delete mBufferItem;
         mInitialized = false;
     }
-    mEnv->DeleteGlobalRef(mThiz);
+
+    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    env->DeleteGlobalRef(mInterposableSurfaceObj);
 }
 
 bool InterposableSurface::initialize() {
@@ -160,8 +163,10 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
         return;
     }
 
-    mEnv->CallVoidMethod(mThiz, javaClassInfo.onFrameAvailable,
-        (jint)buf->getStride(), (jlong)imgData);
+    JNIEnv* env = AndroidRuntime::getJNIEnv();
+    ScopedLocalRef<jobject> interposableSurfaceObj(env, jniGetReferent(env, mInterposableSurfaceObj));
+    env->CallVoidMethod(interposableSurfaceObj.get(), javaClassInfo.onFrameAvailable,
+        static_cast<jint>(buf->getStride()), reinterpret_cast<jlong>(imgData));
 
     res = buf->unlock();
     imgData = NULL;
@@ -253,11 +258,11 @@ static void InterposableSurface_setContext(JNIEnv* env, jobject thiz,
     }
 }
 
-static jboolean InterposableSurface_init(JNIEnv* env, jobject thiz, jint streamId, jobject destinationSurface)
+static jboolean InterposableSurface_init(JNIEnv* env, jobject thiz, jobject weakThiz, jint streamId, jobject destinationSurface)
 {
     sp<Surface> cDestinationSurface = android_view_Surface_getSurface(env, destinationSurface);
     int cStreamId = (int) streamId;
-    sp<InterposableSurface> ctx(new InterposableSurface(env, thiz, cStreamId, cDestinationSurface));
+    sp<InterposableSurface> ctx(new InterposableSurface(weakThiz, cStreamId, cDestinationSurface));
     InterposableSurface_setContext(env, thiz, ctx);
 
     ctx->initialize();
@@ -293,7 +298,7 @@ static void InterposableSurface_close(JNIEnv* env, jobject thiz)
 } // extern "C"
 
 static const JNINativeMethod gMethods[] = {
-    {"nativeInit", "(ILandroid/view/Surface;)Z",
+    {"nativeInit", "(Ljava/lang/ref/WeakReference;ILandroid/view/Surface;)Z",
              (void*)InterposableSurface_init},
     {"nativeGetSourceSurface", "()Landroid/view/Surface;",
              (void*)InterposableSurface_getSourceSurface},
