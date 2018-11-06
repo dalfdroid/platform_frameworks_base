@@ -6,6 +6,7 @@
 #include <gui/BufferItemConsumer.h>
 #include <gui/Surface.h>
 #include <gui/BufferQueue.h>
+#include <gui/BufferQueueDefs.h>
 #include <gui/IProducerListener.h>
 #include "core_jni_helpers.h"
 
@@ -26,7 +27,7 @@
 #endif
 
 #define LOG_ERROR_DALF(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-
+#define ALIGN(x, mask) ( ((x) + (mask) - 1) & ~((mask) - 1) )
 
 // ----------------------------------------------------------------------------
 namespace android {
@@ -64,8 +65,14 @@ private:
     // dequeue.
     virtual void onBufferReleased();
 
-    void sendToPlugin(BufferItem* item);
+    void freeDestBuffers();
+
+    bool getDestBuffer(sp<GraphicBuffer>& sourceBuffer, BufferItem *dest);
+    bool copyFrame(sp<GraphicBuffer>& sourceBuffer, uint8_t *destData);
+    void sendToPlugin(sp<GraphicBuffer>& destBuffer, uint8_t *destData);
     void sendToDestination(BufferItem* item);
+
+    enum { NUM_BUFFER_SLOTS = BufferQueueDefs::NUM_BUFFER_SLOTS };
 
     const int                   mStreamId;
     const sp<Surface>           mDestinationSurface;
@@ -81,6 +88,7 @@ private:
     sp<IGraphicBufferProducer>  mDestinationProducer;
 
     sp<BufferItemConsumer>      mBufferItemConsumer;
+    sp<GraphicBuffer>           mSlots[NUM_BUFFER_SLOTS];
 };
 
 InterposableSurface::InterposableSurface(jobject interposableSurfaceObj, int streamId,
@@ -133,32 +141,81 @@ bool InterposableSurface::initialize() {
     return true;
 }
 
-void InterposableSurface::sendToPlugin(BufferItem *item)
+void InterposableSurface::freeDestBuffers()
 {
-    status_t res = OK;
+    for (int i = 0; i < NUM_BUFFER_SLOTS; i++) {
+        mSlots[i] = 0;
+    }
+}
 
-    uint8_t* imgData = NULL;
-    sp<GraphicBuffer> buf = item->mGraphicBuffer;
-    res = buf->lock(GraphicBuffer::USAGE_SW_READ_OFTEN | GraphicBuffer::USAGE_SW_WRITE_OFTEN,
-                (void**)&imgData);
+bool InterposableSurface::getDestBuffer(sp<GraphicBuffer>& sourceBuffer, BufferItem *destItem)
+{
+    int slot = 0;
+    uint64_t bufferAge = 0;
+    sp<Fence> fence;
+    status_t res = mDestinationProducer->dequeueBuffer(&slot, &fence, sourceBuffer->getWidth(),
+         sourceBuffer->getHeight(), sourceBuffer->getPixelFormat(), sourceBuffer->getUsage(),
+         &bufferAge, nullptr);
 
-    if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not lock buffer in onFrameAvailable."
-                       " Failed with error %d", res);
-        return;
+    if (res < 0) {
+        LOG_ERROR_DALF("%s: InterposableSurface could not get dequeue destination buffer."
+                       " Failed with error %d", __func__, res);
+        return false;
     }
 
+    sp<GraphicBuffer>& destBuffer(mSlots[slot]);
+    if (res & IGraphicBufferProducer::RELEASE_ALL_BUFFERS) {
+        freeDestBuffers();
+    }
+
+    if ((res & IGraphicBufferProducer::BUFFER_NEEDS_REALLOCATION) || destBuffer == nullptr) {
+        res = mDestinationProducer->requestBuffer(slot, &destBuffer);
+        if (res != NO_ERROR) {
+            LOG_ERROR_DALF("%s: InterposableSurface could not request destination buffer."
+                           " Failed with error %d", __func__, res);
+            mDestinationProducer->cancelBuffer(slot, fence);
+            return false;
+        }
+        mSlots[slot] = destBuffer;
+    }
+
+    destItem->mSlot = slot;
+    destItem->mFence = fence;
+    destItem->mGraphicBuffer = destBuffer;
+
+    return true;
+}
+
+bool InterposableSurface::copyFrame(sp<GraphicBuffer>& sourceBuffer, uint8_t *destData)
+{
+    uint8_t* srcData = NULL;
+    status_t res = sourceBuffer->lock(GraphicBuffer::USAGE_SW_READ_OFTEN, (void**)&srcData);
+    if (res != OK) {
+        LOG_ERROR_DALF("%s: InterposableSurface could not lock source buffer."
+                       " Failed with error %d", __func__, res);
+        return false;
+    }
+
+    int stride = sourceBuffer->getStride();
+    int height = sourceBuffer->getHeight();
+    int alignedHeight = ALIGN(height/2, 32) * 2;
+
+    if (sourceBuffer->getPixelFormat() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+        memcpy(destData, srcData, stride * alignedHeight * 1.5);
+    } else {
+        memcpy(destData, srcData, stride * height);
+    }
+
+    sourceBuffer->unlock();
+    return true;
+}
+
+void InterposableSurface::sendToPlugin(sp<GraphicBuffer>& destBuffer, uint8_t *destData)
+{
     JNIEnv* env = AndroidRuntime::getJNIEnv();
     ScopedLocalRef<jobject> interposableSurfaceObj(env, jniGetReferent(env, mInterposableSurfaceObj));
     env->CallVoidMethod(interposableSurfaceObj.get(), javaClassInfo.onFrameAvailable,
-        static_cast<jint>(buf->getStride()), reinterpret_cast<jlong>(imgData));
-
-    res = buf->unlock();
-    imgData = NULL;
-    if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not unlock buffer in onFrameAvailable."
-                       " Failed with error %d", res);
-    }
+        static_cast<jint>(destBuffer->getStride()), reinterpret_cast<jlong>(destData));
 }
 
 void InterposableSurface::sendToDestination(BufferItem *item)
@@ -172,19 +229,11 @@ void InterposableSurface::sendToDestination(BufferItem *item)
         item->mTransform, item->mFence);
     IGraphicBufferProducer::QueueBufferOutput queueOutput;
 
-    int slot = -1;
-    res = mDestinationProducer->attachBuffer(&slot, item->mGraphicBuffer);
+    res = mDestinationProducer->queueBuffer(item->mSlot, queueInput, &queueOutput);
     if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not attach buffer to destination producer."
-                       " Failed with error %d", res);
-        return;
-    }
-
-    res = mDestinationProducer->queueBuffer(slot, queueInput, &queueOutput);
-    if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not queue buffer to destination producer."
-                       " Failed with error %d", res);
-        mDestinationProducer->cancelBuffer(slot, item->mFence);
+        LOG_ERROR_DALF("%s: InterposableSurface could not queue destination buffer."
+                       " Failed with error %d", __func__, res);
+        mDestinationProducer->cancelBuffer(item->mSlot, item->mFence);
     }
 }
 
@@ -195,17 +244,41 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
         return;
     }
 
-    BufferItem bufferItem;
-    status_t res = mBufferItemConsumer->acquireBuffer(&bufferItem, 0, false);
+    BufferItem srcItem;
+    status_t res = mBufferItemConsumer->acquireBuffer(&srcItem, 0, false);
     if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not acquire buffer in onFrameAvailable."
-                       " Failed with error %d", res);
+        LOG_ERROR_DALF("%s: InterposableSurface could not acquire incoming buffer."
+                       " Failed with error %d", __func__, res);
         return;
     }
 
-    sendToPlugin(&bufferItem);
-    sendToDestination(&bufferItem);
-    mBufferItemConsumer->releaseBuffer(bufferItem);
+    sp<GraphicBuffer>& sourceBuffer = srcItem.mGraphicBuffer;
+    BufferItem destItem = srcItem;
+
+    if (getDestBuffer(sourceBuffer, &destItem)) {
+        sp<GraphicBuffer> destBuffer = destItem.mGraphicBuffer;
+        uint8_t* destData = NULL;
+
+        res = destBuffer->lock(
+            GraphicBuffer::USAGE_SW_READ_OFTEN | GraphicBuffer::USAGE_SW_WRITE_OFTEN,
+            (void**)&destData);
+
+        if (res == OK) {
+            if (copyFrame(sourceBuffer, destData)) {
+                sendToPlugin(destBuffer, destData);
+                destBuffer->unlock();
+
+                sendToDestination(&destItem);
+            } else {
+                destBuffer->unlock();
+                mDestinationProducer->cancelBuffer(destItem.mSlot, destItem.mFence);
+            }
+        } else {
+            mDestinationProducer->cancelBuffer(destItem.mSlot, destItem.mFence);
+        }
+    }
+
+    mBufferItemConsumer->releaseBuffer(srcItem);
 }
 
 void InterposableSurface::onBufferReleased()
