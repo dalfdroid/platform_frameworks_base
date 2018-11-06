@@ -64,6 +64,8 @@ private:
     // dequeue.
     virtual void onBufferReleased();
 
+    void sendToPlugin(BufferItem* item);
+    void sendToDestination(BufferItem* item);
 
     const int                   mStreamId;
     const sp<Surface>           mDestinationSurface;
@@ -136,24 +138,12 @@ bool InterposableSurface::initialize() {
     return true;
 }
 
-
-
-void InterposableSurface::onFrameAvailable(const BufferItem& item)
+void InterposableSurface::sendToPlugin(BufferItem *item)
 {
-    if (!mInitialized) {
-        LOG_ERROR_DALF("Unexpectedly receiving frames for stream %d", mStreamId);
-        return;
-    }
-
-    status_t res = mBufferItemConsumer->acquireBuffer(mBufferItem, 0, false);
-    if (res != OK) {
-        LOG_ERROR_DALF("InterposableSurface could not acquire buffer in onFrameAvailable."
-                       " Failed with error %d", res);
-        return;
-    }
+    status_t res = OK;
 
     uint8_t* imgData = NULL;
-    sp<GraphicBuffer> buf = mBufferItem->mGraphicBuffer;
+    sp<GraphicBuffer> buf = item->mGraphicBuffer;
     res = buf->lock(GraphicBuffer::USAGE_SW_READ_OFTEN | GraphicBuffer::USAGE_SW_WRITE_OFTEN,
                 (void**)&imgData);
 
@@ -173,18 +163,22 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
     if (res != OK) {
         LOG_ERROR_DALF("InterposableSurface could not unlock buffer in onFrameAvailable."
                        " Failed with error %d", res);
-        return;
     }
+}
+
+void InterposableSurface::sendToDestination(BufferItem *item)
+{
+    status_t res = OK;
 
     IGraphicBufferProducer::QueueBufferInput queueInput(
-        mBufferItem->mTimestamp, mBufferItem->mIsAutoTimestamp,
-        mBufferItem->mDataSpace, mBufferItem->mCrop,
-        static_cast<int32_t>(mBufferItem->mScalingMode),
-        mBufferItem->mTransform, mBufferItem->mFence);
+        item->mTimestamp, item->mIsAutoTimestamp,
+        item->mDataSpace, item->mCrop,
+        static_cast<int32_t>(item->mScalingMode),
+        item->mTransform, item->mFence);
     IGraphicBufferProducer::QueueBufferOutput queueOutput;
 
     int slot = -1;
-    res = mDestinationProducer->attachBuffer(&slot, mBufferItem->mGraphicBuffer);
+    res = mDestinationProducer->attachBuffer(&slot, item->mGraphicBuffer);
     if (res != OK) {
         LOG_ERROR_DALF("InterposableSurface could not attach buffer to destination producer."
                        " Failed with error %d", res);
@@ -195,8 +189,26 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
     if (res != OK) {
         LOG_ERROR_DALF("InterposableSurface could not queue buffer to destination producer."
                        " Failed with error %d", res);
+        mDestinationProducer->cancelBuffer(slot, item->mFence);
+    }
+}
+
+void InterposableSurface::onFrameAvailable(const BufferItem& item)
+{
+    if (!mInitialized) {
+        LOG_ERROR_DALF("Unexpectedly receiving frames for stream %d", mStreamId);
+        return;
     }
 
+    status_t res = mBufferItemConsumer->acquireBuffer(mBufferItem, 0, false);
+    if (res != OK) {
+        LOG_ERROR_DALF("InterposableSurface could not acquire buffer in onFrameAvailable."
+                       " Failed with error %d", res);
+        return;
+    }
+
+    sendToPlugin(mBufferItem);
+    sendToDestination(mBufferItem);
     mBufferItemConsumer->releaseBuffer(*mBufferItem);
 }
 
