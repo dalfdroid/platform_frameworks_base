@@ -81,8 +81,6 @@ private:
     sp<IGraphicBufferProducer>  mDestinationProducer;
 
     sp<BufferItemConsumer>      mBufferItemConsumer;
-
-    BufferItem*                 mBufferItem;
 };
 
 InterposableSurface::InterposableSurface(jobject interposableSurfaceObj, int streamId,
@@ -101,7 +99,6 @@ void InterposableSurface::disconnect() {
         mDestinationSurface->disconnect(NATIVE_WINDOW_API_CAMERA);
         mBufferItemConsumer->setFrameAvailableListener(0);
         mBufferItemConsumer->abandon();
-        delete mBufferItem;
         mInitialized = false;
     }
 
@@ -128,8 +125,6 @@ bool InterposableSurface::initialize() {
     mBufferItemConsumer = new BufferItemConsumer(mSourceConsumer, 1,
          GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN,
          /** controlledByApp */ true);
-
-    mBufferItem = new BufferItem;
 
     wp<FrameAvailableListener> listener = this;
     mBufferItemConsumer->setFrameAvailableListener(listener);
@@ -200,16 +195,17 @@ void InterposableSurface::onFrameAvailable(const BufferItem& item)
         return;
     }
 
-    status_t res = mBufferItemConsumer->acquireBuffer(mBufferItem, 0, false);
+    BufferItem bufferItem;
+    status_t res = mBufferItemConsumer->acquireBuffer(&bufferItem, 0, false);
     if (res != OK) {
         LOG_ERROR_DALF("InterposableSurface could not acquire buffer in onFrameAvailable."
                        " Failed with error %d", res);
         return;
     }
 
-    sendToPlugin(mBufferItem);
-    sendToDestination(mBufferItem);
-    mBufferItemConsumer->releaseBuffer(*mBufferItem);
+    sendToPlugin(&bufferItem);
+    sendToDestination(&bufferItem);
+    mBufferItemConsumer->releaseBuffer(bufferItem);
 }
 
 void InterposableSurface::onBufferReleased()
