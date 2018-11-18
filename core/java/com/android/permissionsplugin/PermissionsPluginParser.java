@@ -23,6 +23,7 @@ public class PermissionsPluginParser {
     private static final String JSON_KEY_ROOT = "permissionsplugin";
     private static final String JSON_KEY_SUPPORTED_PKGS = "supportsPkg";
     private static final String JSON_KEY_INTERPOSED_APIS = "interposesOn";
+    private static final String JSON_KEY_ACTIVATE_ON_INSTALL = "activateOnInstall";
 
     public PermissionsPluginParser(){
     }
@@ -75,6 +76,14 @@ public class PermissionsPluginParser {
             JSONArray supportedAPIs = root.getJSONArray(JSON_KEY_INTERPOSED_APIS);
             for(int i=0; i<supportedAPIs.length(); i++){
                 plugin.supportedAPIs.add(supportedAPIs.getString(i));
+            }
+
+            // Activate the plugin if activateOnInstall flag is set
+            boolean activateOnInstall = root.optBoolean(JSON_KEY_ACTIVATE_ON_INSTALL,false);
+            if (activateOnInstall) {
+                plugin.isActive = true;
+                plugin.targetPackages.addAll(plugin.supportedPackages);
+                plugin.targetAPIs.addAll(plugin.supportedAPIs);
             }
 
         }catch (Exception e){
