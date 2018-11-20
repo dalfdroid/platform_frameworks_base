@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import com.android.permissionsplugin.PermissionsPlugin;
 import com.android.permissionsplugin.PermissionsPluginOptions;
 
+import android.util.ArrayMap;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -82,8 +83,12 @@ public class PermissionsPluginParser {
             boolean activateOnInstall = root.optBoolean(JSON_KEY_ACTIVATE_ON_INSTALL,false);
             if (activateOnInstall) {
                 plugin.isActive = true;
-                plugin.targetPackages.addAll(plugin.supportedPackages);
-                plugin.targetAPIs.addAll(plugin.supportedAPIs);
+
+                // Add each supported package as the target package.
+                // For each target package add all supported APIs as target APIs.
+                for (String package : plugin.supportedPackages) {
+                    plugin.targetPackageToAPIs.put(package,new ArrayList<>(plugin.supportedAPIs));
+                }
             }
 
         }catch (Exception e){
