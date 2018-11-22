@@ -39,9 +39,18 @@ public interface IPluginService extends IInterface
      */
     public IPluginCameraInterposer getCameraInterposer() throws RemoteException;
 
+    /**
+     * Returns the external storage interposer of this plugin. May return null
+     * if the plugin does not interpose on the external storage.
+     *
+     * @return The external storage interposer of this plugin.
+     */
+    public IPluginStorageInterposer getStorageInterposer() throws RemoteException;
+
     static final String descriptor = "android.os.IPluginService";
     static final int TRANSACTION_getLocationInterposer = (IBinder.FIRST_CALL_TRANSACTION + 0);
     static final int TRANSACTION_getContactsInterposer = (IBinder.FIRST_CALL_TRANSACTION + 1);
     static final int TRANSACTION_getCalendarInterposer = (IBinder.FIRST_CALL_TRANSACTION + 2);
     static final int TRANSACTION_getCameraInterposer = (IBinder.FIRST_CALL_TRANSACTION + 3);
+    static final int TRANSACTION_getStorageInterposer = (IBinder.FIRST_CALL_TRANSACTION + 4);
 }

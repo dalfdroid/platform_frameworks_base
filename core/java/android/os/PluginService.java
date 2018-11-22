@@ -108,6 +108,21 @@ public abstract class PluginService extends Binder implements IPluginService
                 return true;
             }
 
+        case TRANSACTION_getStorageInterposer:
+            {
+                data.enforceInterface(descriptor);
+                IPluginStorageInterposer _result = this.getStorageInterposer();
+                reply.writeNoException();
+
+                IBinder val = null;
+                if (_result != null) {
+                    val = _result.asBinder();
+                }
+                reply.writeStrongBinder(val);
+
+                return true;
+            }
+
         }
 
         return super.onTransact(code, data, reply, flags);
@@ -162,6 +177,14 @@ final class PluginServiceProxy implements IPluginService
     public IPluginCameraInterposer getCameraInterposer() throws RemoteException
     {
         String errorMsg = "Use getCameraInterposerRaw() instead!";
+        Log.d(PermissionsPluginOptions.TAG, errorMsg);
+        throw new RemoteException(errorMsg);
+    }
+
+    @Override
+    public IPluginStorageInterposer getStorageInterposer() throws RemoteException
+    {
+        String errorMsg = "Use getStorageInterposerRaw() instead!";
         Log.d(PermissionsPluginOptions.TAG, errorMsg);
         throw new RemoteException(errorMsg);
     }
@@ -247,6 +270,29 @@ final class PluginServiceProxy implements IPluginService
         try {
             _data.writeInterfaceToken(descriptor);
             mRemote.transact(TRANSACTION_getCameraInterposer, _data, _reply, 0);
+            _reply.readException();
+
+            _result = _reply.readStrongBinder();
+        }
+        finally {
+            _reply.recycle();
+            _data.recycle();
+        }
+        return _result;
+    }
+
+    /**
+     * Returns the raw IBinder of the external storage interposer of this
+     * plugin. Transform it into the interface version manually.
+     */
+    public IBinder getStorageInterposerRaw() throws RemoteException {
+        Parcel _data = Parcel.obtain();
+        Parcel _reply = Parcel.obtain();
+        IBinder _result;
+
+        try {
+            _data.writeInterfaceToken(descriptor);
+            mRemote.transact(TRANSACTION_getStorageInterposer, _data, _reply, 0);
             _reply.readException();
 
             _result = _reply.readStrongBinder();

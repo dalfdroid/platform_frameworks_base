@@ -24,7 +24,14 @@ public enum Perturbable {
      * interposition is handled in a different manner. This enum value is here
      * for the sake of completeness.
      */
-    CAMERA;
+    CAMERA,
+
+    /**
+     * At the moment, there are no Storage perturables because external storage
+     * interposition is done via ptrace. This enum value is here for the sake of
+     * completeness.
+     */
+    STORAGE;
 
     public static Perturbable getReturnTypeFor(Uri url) {
         if (url != null) {
