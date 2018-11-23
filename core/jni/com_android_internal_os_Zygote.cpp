@@ -61,6 +61,7 @@
 #include <nativehelper/ScopedPrimitiveArray.h>
 #include <nativehelper/ScopedUtfChars.h>
 #include "fd_utils.h"
+#include "storage_tracer.h"
 
 #include "nativebridge/native_bridge.h"
 
@@ -527,6 +528,19 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
     RuntimeAbort(env, __LINE__, "Unable to restat file descriptor table.");
   }
 
+  sem_t *appSem = NULL;
+  sem_t *tracerSem = NULL;
+  int tracerSetup = 0;
+
+  if (enableStorageTracer) {
+      int ret = tracer_prefork_setup();
+      if (ret == 0) {
+          appSem = tracer_get_app_sem();
+          tracerSem = tracer_get_tracer_sem();
+          tracerSetup = 1;
+      }
+  }
+
   pid_t pid = fork();
 
   if (pid == 0) {
@@ -672,8 +686,38 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
     if (env->ExceptionCheck()) {
       RuntimeAbort(env, __LINE__, "Error calling post fork hooks.");
     }
+
+    if (enableStorageTracer && tracerSetup) {
+        sem_post(appSem);
+        sem_wait(tracerSem);
+        tracer_postfork_app_cleanup();
+    }
+
   } else if (pid > 0) {
     // the parent process
+
+    if (enableStorageTracer && tracerSetup) {
+      pid_t app_child_pid = pid;
+      pid = fork();
+
+      if (pid == 0) {
+        // the child process (the tracer)
+        UnsetSigChldHandler();
+
+        int ret = tracer_postfork_setup(app_child_pid);
+        if (ret < 0) {
+          // Had a very bad error setting up the tracer. Just kill it.
+          exit(0);
+        }
+
+        pid = -app_child_pid;
+
+      } else {
+        // the parent process (zygote)
+        pid = app_child_pid;
+        tracer_postfork_zygote_cleanup();
+      }
+    }
 
     // We blocked SIGCHLD prior to a fork, we unblock it here.
     if (sigprocmask(SIG_UNBLOCK, &sigchld, nullptr) == -1) {
@@ -818,6 +862,11 @@ static void com_android_internal_os_Zygote_nativeUnmountStorageOnInit(JNIEnv* en
     UnmountTree("/storage");
 }
 
+static void com_android_internal_os_Zygote_nativeRunStorageTracer(JNIEnv* env, jclass) {
+    tracer_run_loop();
+    exit(0);
+}
+
 static const JNINativeMethod gMethods[] = {
     { "nativeForkAndSpecialize",
       "(II[II[[IILjava/lang/String;Ljava/lang/String;[I[ILjava/lang/String;Ljava/lang/String;Z)I",
@@ -829,7 +878,9 @@ static const JNINativeMethod gMethods[] = {
     { "nativeUnmountStorageOnInit", "()V",
       (void *) com_android_internal_os_Zygote_nativeUnmountStorageOnInit },
     { "nativePreApplicationInit", "()V",
-      (void *) com_android_internal_os_Zygote_nativePreApplicationInit }
+      (void *) com_android_internal_os_Zygote_nativePreApplicationInit },
+    { "nativeRunStorageTracer", "()V",
+      (void *) com_android_internal_os_Zygote_nativeRunStorageTracer }
 };
 
 int register_com_android_internal_os_Zygote(JNIEnv* env) {

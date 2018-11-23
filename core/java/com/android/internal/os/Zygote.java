@@ -115,8 +115,23 @@ public final class Zygote {
             Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "PostFork");
         }
         VM_HOOKS.postForkCommon();
+
+        if (enableStorageTracer) {
+
+            /**
+             * If the pid is less than -1, then the absolute value of the
+             * pid refers to the storage tracer's pid.
+             */
+            if (pid < -1) {
+                // This will not return.
+                nativeRunStorageTracer();
+            }
+        }
+
         return pid;
     }
+
+    native private static void nativeRunStorageTracer();
 
     native private static int nativeForkAndSpecialize(int uid, int gid, int[] gids,int debugFlags,
           int[][] rlimits, int mountExternal, String seInfo, String niceName, int[] fdsToClose,
