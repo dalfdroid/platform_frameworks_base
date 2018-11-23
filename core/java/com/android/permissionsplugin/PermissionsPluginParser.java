@@ -82,11 +82,11 @@ public class PermissionsPluginParser {
             // Add each supported package as the target package
             // and activate the plugin for all package/APIs if activateOnInstall flag is set.
             boolean activateOnInstall = root.optBoolean(JSON_KEY_ACTIVATE_ON_INSTALL,false);
-            for (String package : plugin.supportedPackages) {
+            for (String supportedPkg : plugin.supportedPackages) {
                 if (activateOnInstall) {
-                    plugin.targetPackageToAPIs.put(package,new ArrayList<>(plugin.supportedAPIs));
+                    plugin.targetPackageToAPIs.put(supportedPkg,new ArrayList<>(plugin.supportedAPIs));
                 } else {
-                    plugin.targetPackageToAPIs.put(package,new ArrayList<>());
+                    plugin.targetPackageToAPIs.put(supportedPkg,new ArrayList<>());
                 }
             }
 

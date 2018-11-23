@@ -185,7 +185,7 @@ public class PackageManagerStub extends PackageManager {
 
     /** @hide */
     @Override
-    public List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){
+    public List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI){
         return null;
     }
 
@@ -200,34 +200,10 @@ public class PackageManagerStub extends PackageManager {
     public List<String> getInstalledUntrustedPackages(){
         return null;
     }
-    
-    /** @hide */
-    @Override
-    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive){
-        return false;
-    }
 
     /** @hide */
     @Override
-    public boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset){
-        return false;
-    }
-
-    /** @hide */
-    @Override
-    public boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages){
-        return false;
-    }
-
-    /** @hide */
-    @Override
-    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
-        return false;
-    }
-
-    /** @hide */
-    @Override
-    public boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs){
+    public boolean activatePlugin(String PluginPackage, String targetPackage, String targetAPI, boolean activate){
         return false;
     }
 

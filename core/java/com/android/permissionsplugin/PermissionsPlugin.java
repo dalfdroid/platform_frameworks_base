@@ -29,6 +29,10 @@ public class PermissionsPlugin implements Parcelable{
     // Keys are target packages and must be subset of supportedPackages.
     // Values are list of targetAPIs for the target package and must be
     // subset of supportedAPIs.
+    // Note: Currently we consider '*' (indicating all packages)
+    // as a special package name and use it just like any other package/app.
+    // The actual interpretation of '*' happens in PackageManagerService.
+    // The permissions plugin object, parser and db are agnostic to the meaning of '*'.
     public ArrayMap<String, ArrayList<String>> targetPackageToAPIs;
 
     public PermissionsPlugin(String packageName){

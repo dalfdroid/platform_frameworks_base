@@ -43,7 +43,7 @@ public class PermissionsPluginDb{
     private static class TargetPackageEntry implements BaseColumns {
     
         // Target package table name
-        public static final TABLE_NAME = "target_package";
+        public static final String TABLE_NAME = "target_package";
         
         // Column name for the plugin id stored as long
         // TODO: plugin_id should be a foreign key from the plugin table
@@ -84,7 +84,7 @@ public class PermissionsPluginDb{
 
             // SQL query to create plugin table
             final String SQL_CREATE_TARGET_PACKAGE_TABLE =
-                "CREATE TABLE " + TargetPackage.TABLE_NAME + " (" +
+                "CREATE TABLE " + TargetPackageEntry.TABLE_NAME + " (" +
                 TargetPackageEntry._ID + " INTEGER PRIMARY KEY," +
                 TargetPackageEntry.COLUMN_NAME_PLUGIN_ID + " INTEGER NOT NULL," +
                 TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " TEXT," + 
@@ -94,7 +94,7 @@ public class PermissionsPluginDb{
 
             if(PermissionsPluginOptions.DEBUG){
                 Log.d(PermissionsPluginOptions.TAG,"Created table " + PluginEntry.TABLE_NAME + " in db "+DATABASE_NAME);
-                Log.d(PermissionsPluginOptions.TAG,"Created table " + TARGETPACKAGEEntry.TABLE_NAME + " in db "+DATABASE_NAME);
+                Log.d(PermissionsPluginOptions.TAG,"Created table " + TargetPackageEntry.TABLE_NAME + " in db "+DATABASE_NAME);
             }
         }
 
@@ -193,15 +193,15 @@ public class PermissionsPluginDb{
             long newRowId = db.insert(PluginEntry.TABLE_NAME, null, values);
 
             // Insert target package info in the target package table
-            for (String package : plugin.supportedPackages) {
+            for (String pkg : plugin.supportedPackages) {
                 for (String api : plugin.supportedAPIs) {
                     ContentValues packageValues = new ContentValues();
-                    packageValues.put(TargetPacakgeEntry.COLUMN_NAME_PLUGIN_ID,newRowId);
-                    packageValues.put(TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,package);
+                    packageValues.put(TargetPackageEntry.COLUMN_NAME_PLUGIN_ID,newRowId);
+                    packageValues.put(TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,pkg);
                     packageValues.put(TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS,api);
                     
-                    boolean selected = (plugin.targetPackageToAPIs.containsKey(package) && 
-                                            plugin.targetPackageToAPIs.get(package).contains(api));
+                    boolean selected = (plugin.targetPackageToAPIs.containsKey(pkg) && 
+                                            plugin.targetPackageToAPIs.get(pkg).contains(api));
                     packageValues.put(TargetPackageEntry.COLUMN_NAME_IS_SELECTED,selected?1:0);
                 
                     db.insert(TargetPackageEntry.TABLE_NAME,null,packageValues);
@@ -243,11 +243,11 @@ public class PermissionsPluginDb{
             db.delete(TargetPackageEntry.TABLE_NAME, selection, selectionArgs);
 
             // Prepare selection criteria to select the plugin row
-            String selection = PluginEntry._ID + " = ? ";
-            String[] selectionArgs = new String[]{String.valueOf(plugin.id)};
+            String packageSelection = PluginEntry._ID + " = ? ";
+            String[] packageSelectionArgs = new String[]{String.valueOf(plugin.id)};
 
             // Delete the row identified by the plugin id
-            int deletedRows = db.delete(PluginEntry.TABLE_NAME, selection, selectionArgs);
+            int deletedRows = db.delete(PluginEntry.TABLE_NAME, packageSelection, packageSelectionArgs);
 
             return deletedRows;
 
@@ -279,17 +279,17 @@ public class PermissionsPluginDb{
             int updatedRows = 0;
 
             // Update target package info of this plugin
-            for (String package : plugin.supportedPackages) {
+            for (String pkg : plugin.supportedPackages) {
                 for (String api : plugin.supportedAPIs) {
                     ContentValues packageValues = new ContentValues();
                     
-                    boolean selected = (plugin.targetPackageToAPIs.containsKey(package) && 
-                                            plugin.targetPackageToAPIs.get(package).contains(api));
+                    boolean selected = (plugin.targetPackageToAPIs.containsKey(pkg) && 
+                                            plugin.targetPackageToAPIs.get(pkg).contains(api));
                     packageValues.put(TargetPackageEntry.COLUMN_NAME_IS_SELECTED,selected?1:0);
                 
                     // Prepare selection criteria to select the desired row
                     String packageSelection = TargetPackageEntry.COLUMN_NAME_PLUGIN_ID + " = ? ";
-                    packageSelection += " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " = " + package;
+                    packageSelection += " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " = " + pkg;
                     packageSelection += " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS + " = " + api;
                           
                     String[] packageSelectionArgs = new String[]{String.valueOf(plugin.id)};
@@ -307,7 +307,7 @@ public class PermissionsPluginDb{
 
     }
 
-    public ArrayList<String> retrieveSupportedPackages(String pluginId) {
+    public ArrayList<String> retrieveSupportedPackages(long pluginId) {
         ArrayList<String> supportedPackages = new ArrayList<>();
 
         // Gets the data repository in read mode
@@ -318,22 +318,22 @@ public class PermissionsPluginDb{
         String[] selectionArgs = new String[]{String.valueOf(pluginId)};
 
         // Get the columns we are interested in
-        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES}
-        int supportedPkgIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
+        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES};
 
         // Retrieve distinct supported packages of given plugin from target package table
         Cursor cursor = db.query(true,TargetPackageEntry.TABLE_NAME,columns,selection,selectionArgs,null,null,null,null);
+        int supportedPkgIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
 
         // Populate list of supported packages
         while (cursor.moveToNext()) {
-            String package = cursor.getString(supportedPkgIndex);
-            supportedPackages.add(package);
+            String pkg = cursor.getString(supportedPkgIndex);
+            supportedPackages.add(pkg);
         }
 
         return supportedPackages;
     }
 
-    public ArrayList<String> retrieveSupportedAPIs(String pluginId) {
+    public ArrayList<String> retrieveSupportedAPIs(long pluginId) {
         ArrayList<String> supportedAPIs = new ArrayList<>();
 
         // Gets the data repository in read mode
@@ -344,11 +344,11 @@ public class PermissionsPluginDb{
         String[] selectionArgs = new String[]{String.valueOf(pluginId)};
 
         // Get the columns we are interested in
-        String[] columns = new Stringp[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS}
-        int supportedAPIsIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS);
+        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS};
 
         // Retrieve distinct supported packages of given plugin from target package table
         Cursor cursor = db.query(true,TargetPackageEntry.TABLE_NAME,columns,selection,selectionArgs,null,null,null,null);
+        int supportedAPIsIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS);
 
         // Populate map of target package to target APIs
         while (cursor.moveToNext()) {
@@ -359,7 +359,7 @@ public class PermissionsPluginDb{
         return supportedAPIs;
     }
 
-    public ArrayMap<String, ArrayList<String>> retrieveTargetPackageInfo(String pluginId) {
+    public ArrayMap<String, ArrayList<String>> retrieveTargetPackageInfo(long pluginId) {
 
         ArrayMap<String, ArrayList<String>> targetPackageToAPIs = new ArrayMap<>();
 
@@ -371,26 +371,26 @@ public class PermissionsPluginDb{
         String[] selectionArgs = new String[]{String.valueOf(pluginId)};
 
         // Get the columns we are interested in
-        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS}
+        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS};
+
+        // Retrieve selected packages and APIs of given plugin from target package table
+        Cursor cursor = db.query(TargetPackageEntry.TABLE_NAME,columns,selection,selectionArgs,null,null,null,null);
         int supportedPackagesIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES);
         int supportedAPIsIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS);
         int isSelectedIndex = cursor.getColumnIndex(TargetPackageEntry.COLUMN_NAME_IS_SELECTED);
 
-        // Retrieve selected packages and APIs of given plugin from target package table
-        Cursor cursor = db.query(TargetPackageEntry.TABLE_NAME,columns,selection,selectionArgs,null,null,null,null);
-
         // Populate list of supported packages
         while (cursor.moveToNext()) {
-            String package = cursor.getString(supportedPackagesIndex);
+            String pkg = cursor.getString(supportedPackagesIndex);
             String api = cursor.getString(supportedAPIsIndex);
             boolean selected = cursor.getInt(isSelectedIndex)==1?true:false;
 
-            if (!targetPackageToAPIs.containsKey(package)) {
-                targetPackageToAPIs.put(packge,new ArrayList<String>());
+            if (!targetPackageToAPIs.containsKey(pkg)) {
+                targetPackageToAPIs.put(pkg,new ArrayList<String>());
             }
             
             if (selected) {
-                targetPackageToAPIs.get(package).add(api);
+                targetPackageToAPIs.get(pkg).add(api);
             }
         }
 

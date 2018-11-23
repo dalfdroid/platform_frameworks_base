@@ -220,14 +220,13 @@ package android.test.mock {
 
   public deprecated class MockPackageManager extends android.content.pm.PackageManager {
     ctor public MockPackageManager();
+    method public boolean activatePlugin(java.lang.String, java.lang.String, java.lang.String, boolean);
     method public void addCrossProfileIntentFilter(android.content.IntentFilter, int, int, int);
     method public void addOnPermissionsChangeListener(android.content.pm.PackageManager.OnPermissionsChangedListener);
     method public void addPackageToPreferred(java.lang.String);
     method public boolean addPermission(android.content.pm.PermissionInfo);
     method public boolean addPermissionAsync(android.content.pm.PermissionInfo);
     method public void addPreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
-    method public boolean addTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
-    method public boolean addTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>, boolean);
     method public boolean canRequestPackageInstalls();
     method public java.lang.String[] canonicalToCurrentPackageNames(java.lang.String[]);
     method public int checkPermission(java.lang.String, java.lang.String);
@@ -246,7 +245,7 @@ package android.test.mock {
     method public void flushPackageRestrictionsAsUser(int);
     method public void freeStorage(java.lang.String, long, android.content.IntentSender);
     method public void freeStorageAndNotify(java.lang.String, long, android.content.pm.IPackageDataObserver);
-    method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getActivePermissionsPluginsForApp(java.lang.String);
+    method public java.util.List<com.android.permissionsplugin.PermissionsPlugin> getActivePermissionsPluginsForApp(java.lang.String, java.lang.String);
     method public android.graphics.drawable.Drawable getActivityBanner(android.content.ComponentName) throws android.content.pm.PackageManager.NameNotFoundException;
     method public android.graphics.drawable.Drawable getActivityBanner(android.content.Intent) throws android.content.pm.PackageManager.NameNotFoundException;
     method public android.graphics.drawable.Drawable getActivityIcon(android.content.ComponentName) throws android.content.pm.PackageManager.NameNotFoundException;
@@ -382,8 +381,6 @@ package android.test.mock {
     method public void removeOnPermissionsChangeListener(android.content.pm.PackageManager.OnPermissionsChangedListener);
     method public void removePackageFromPreferred(java.lang.String);
     method public void removePermission(java.lang.String);
-    method public boolean removeTargetAPIsForPlugin(java.lang.String, java.util.List<java.lang.String>);
-    method public boolean removeTargetPackagesForPlugin(java.lang.String, java.util.List<java.lang.String>);
     method public void replacePreferredActivity(android.content.IntentFilter, int, android.content.ComponentName[], android.content.ComponentName);
     method public android.content.pm.ResolveInfo resolveActivity(android.content.Intent, int);
     method public android.content.pm.ResolveInfo resolveActivityAsUser(android.content.Intent, int, int);
@@ -391,7 +388,6 @@ package android.test.mock {
     method public android.content.pm.ProviderInfo resolveContentProviderAsUser(java.lang.String, int, int);
     method public android.content.pm.ResolveInfo resolveService(android.content.Intent, int);
     method public void revokeRuntimePermission(java.lang.String, java.lang.String, android.os.UserHandle);
-    method public boolean setActivationStatusForPermissionsPlugin(java.lang.String, boolean);
     method public void setApplicationCategoryHint(java.lang.String, int);
     method public void setApplicationEnabledSetting(java.lang.String, int, int);
     method public boolean setApplicationHiddenSettingAsUser(java.lang.String, boolean, android.os.UserHandle);
