@@ -3803,6 +3803,14 @@ public class ActivityManagerService extends IActivityManager.Stub
                 throw e.rethrowAsRuntimeException();
             }
 
+            boolean enableStorageTracer = false;
+            try {
+                enableStorageTracer =
+                    AppGlobals.getPackageManager().hasStoragePlugin(app.info.packageName);
+            } catch (RemoteException e) {
+                throw e.rethrowAsRuntimeException();
+            }
+
             int uid = app.uid;
             int[] gids = null;
             int mountExternal = Zygote.MOUNT_EXTERNAL_NONE;
@@ -3935,7 +3943,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 startResult = Process.start(entryPoint,
                         app.processName, uid, uid, gids, debugFlags, mountExternal,
                         app.info.targetSdkVersion, seInfo, requiredAbi, instructionSet,
-                        app.info.dataDir, invokeWith, entryPointArgs);
+                        app.info.dataDir, invokeWith, enableStorageTracer, entryPointArgs);
             }
             checkTime(startTime, "startProcess: returned from zygote!");
             Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);

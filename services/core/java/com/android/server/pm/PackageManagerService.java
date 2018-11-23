@@ -198,6 +198,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.ParcelFileDescriptor;
 import android.os.PatternMatcher;
+import android.os.PluginProxy;
 import android.os.Process;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
@@ -3351,6 +3352,35 @@ public class PackageManagerService extends IPackageManager.Stub
             }		
 
             return new ParceledListSlice<>(list);        	
+        }
+    }
+
+
+    /**
+     * Checks if the specified app has a plugin that interposes on its accesses
+     * to external storage.
+     *
+     * @param The package name of the app.
+     *
+     * @return true if the app has a plugin that interposes on external storage,
+     * false otherwise.
+     */
+    @Override
+    public boolean hasStoragePlugin(String packageName) {
+        synchronized (mPackages) {
+
+            // TODO: For now, we only support one active plugin per app.
+            // In particular, we consider the first available active plugin.
+            // In future, we should allow multiple plugins.
+            List<PermissionsPlugin> plugins = getActivePermissionsPluginsForApp(packageName).getList();
+            if (!plugins.isEmpty()) {
+                PermissionsPlugin plugin = plugins.get(0);
+                if (plugin.targetAPIs.contains(PluginProxy.INTERPOSER_STORAGE)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 

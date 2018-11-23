@@ -222,7 +222,7 @@ class ZygoteConnection {
         pid = Zygote.forkAndSpecialize(parsedArgs.uid, parsedArgs.gid, parsedArgs.gids,
                 parsedArgs.debugFlags, rlimits, parsedArgs.mountExternal, parsedArgs.seInfo,
                 parsedArgs.niceName, fdsToClose, fdsToIgnore, parsedArgs.instructionSet,
-                parsedArgs.appDataDir);
+                parsedArgs.appDataDir, parsedArgs.enableStorageTracer);
 
         try {
             if (pid == 0) {
@@ -417,6 +417,12 @@ class ZygoteConnection {
         boolean preloadDefault;
 
         /**
+         * Whether Zygote should also spawn a ptrace-based tracer for the app,
+         * to trace its accesses to files on external storage.
+         */
+        boolean enableStorageTracer;
+
+        /**
          * Constructs instance and parses args
          * @param args zygote command-line args
          * @throws IllegalArgumentException
@@ -489,6 +495,8 @@ class ZygoteConnection {
                     debugFlags |= Zygote.DEBUG_ENABLE_ASSERT;
                 } else if (arg.equals("--runtime-args")) {
                     seenRuntimeArgs = true;
+                } else if (arg.equals("--enable-storage-tracer")) {
+                    enableStorageTracer = true;
                 } else if (arg.startsWith("--seinfo=")) {
                     if (seInfoSpecified) {
                         throw new IllegalArgumentException(

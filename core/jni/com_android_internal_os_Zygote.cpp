@@ -491,7 +491,8 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
                                      jstring java_se_info, jstring java_se_name,
                                      bool is_system_server, jintArray fdsToClose,
                                      jintArray fdsToIgnore,
-                                     jstring instructionSet, jstring dataDir) {
+                                     jstring instructionSet, jstring dataDir,
+                                     jboolean enableStorageTracer) {
   SetSigChldHandler();
 
   sigset_t sigchld;
@@ -696,7 +697,8 @@ static jint com_android_internal_os_Zygote_nativeForkAndSpecialize(
         jint mount_external, jstring se_info, jstring se_name,
         jintArray fdsToClose,
         jintArray fdsToIgnore,
-        jstring instructionSet, jstring appDataDir) {
+        jstring instructionSet, jstring appDataDir,
+        jboolean enableStorageTracer) {
     jlong capabilities = 0;
 
     // Grant CAP_WAKE_ALARM to the Bluetooth process.
@@ -734,7 +736,8 @@ static jint com_android_internal_os_Zygote_nativeForkAndSpecialize(
 
     return ForkAndSpecializeCommon(env, uid, gid, gids, debug_flags,
             rlimits, capabilities, capabilities, mount_external, se_info,
-            se_name, false, fdsToClose, fdsToIgnore, instructionSet, appDataDir);
+            se_name, false, fdsToClose, fdsToIgnore, instructionSet, appDataDir,
+            enableStorageTracer);
 }
 
 static jint com_android_internal_os_Zygote_nativeForkSystemServer(
@@ -745,7 +748,7 @@ static jint com_android_internal_os_Zygote_nativeForkSystemServer(
                                       debug_flags, rlimits,
                                       permittedCapabilities, effectiveCapabilities,
                                       MOUNT_EXTERNAL_DEFAULT, NULL, NULL, true, NULL,
-                                      NULL, NULL, NULL);
+                                      NULL, NULL, NULL, false);
   if (pid > 0) {
       // The zygote process checks whether the child process has died or not.
       ALOGI("System server process %d has been created", pid);
@@ -817,7 +820,7 @@ static void com_android_internal_os_Zygote_nativeUnmountStorageOnInit(JNIEnv* en
 
 static const JNINativeMethod gMethods[] = {
     { "nativeForkAndSpecialize",
-      "(II[II[[IILjava/lang/String;Ljava/lang/String;[I[ILjava/lang/String;Ljava/lang/String;)I",
+      "(II[II[[IILjava/lang/String;Ljava/lang/String;[I[ILjava/lang/String;Ljava/lang/String;Z)I",
       (void *) com_android_internal_os_Zygote_nativeForkAndSpecialize },
     { "nativeForkSystemServer", "(II[II[[IJJ)I",
       (void *) com_android_internal_os_Zygote_nativeForkSystemServer },

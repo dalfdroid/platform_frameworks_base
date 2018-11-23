@@ -188,6 +188,8 @@ public class ZygoteProcess {
      * @param instructionSet null-ok the instruction set to use.
      * @param appDataDir null-ok the data directory of the app.
      * @param invokeWith null-ok the command to invoke with.
+     * @param enableStorageTracer whether Zygote should spawn a storage tracer
+     * for the app.
      * @param zygoteArgs Additional arguments to supply to the zygote process.
      *
      * @return An object that describes the result of the attempt to start the process.
@@ -203,11 +205,13 @@ public class ZygoteProcess {
                                                   String instructionSet,
                                                   String appDataDir,
                                                   String invokeWith,
+                                                  boolean enableStorageTracer,
                                                   String[] zygoteArgs) {
         try {
             return startViaZygote(processClass, niceName, uid, gid, gids,
                     debugFlags, mountExternal, targetSdkVersion, seInfo,
-                    abi, instructionSet, appDataDir, invokeWith, zygoteArgs);
+                    abi, instructionSet, appDataDir, invokeWith, enableStorageTracer,
+                    zygoteArgs);
         } catch (ZygoteStartFailedEx ex) {
             Log.e(LOG_TAG,
                     "Starting VM process through Zygote failed");
@@ -323,6 +327,8 @@ public class ZygoteProcess {
      * @param abi the ABI the process should use.
      * @param instructionSet null-ok the instruction set to use.
      * @param appDataDir null-ok the data directory of the app.
+     * @param enableStorageTracer whether Zygote should spawn a storage tracer
+     * for the app.
      * @param extraArgs Additional arguments to supply to the zygote process.
      * @return An object that describes the result of the attempt to start the process.
      * @throws ZygoteStartFailedEx if process start failed for any reason
@@ -338,6 +344,7 @@ public class ZygoteProcess {
                                                       String instructionSet,
                                                       String appDataDir,
                                                       String invokeWith,
+                                                      boolean enableStorageTracer,
                                                       String[] extraArgs)
                                                       throws ZygoteStartFailedEx {
         ArrayList<String> argsForZygote = new ArrayList<String>();
@@ -418,6 +425,10 @@ public class ZygoteProcess {
         if (invokeWith != null) {
             argsForZygote.add("--invoke-with");
             argsForZygote.add(invokeWith);
+        }
+
+        if (enableStorageTracer) {
+            argsForZygote.add("--enable-storage-tracer");
         }
 
         argsForZygote.add(processClass);

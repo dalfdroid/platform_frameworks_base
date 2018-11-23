@@ -170,6 +170,9 @@ interface IPackageManager {
     // Return a list of active Permissions Plugin for a given package name
     ParceledListSlice getActivePermissionsPluginsForApp(in String appPackage);
 
+    // Return true if the specified app has a plugin that interposes on the external storage
+    boolean hasStoragePlugin(in String packageName);
+
     // Return a list of installed permissions plugins
     ParceledListSlice getInstalledPermissionsPlugins();
 

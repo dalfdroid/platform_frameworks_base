@@ -92,19 +92,21 @@ public final class Zygote {
      * in the file descriptor table check.
      * @param instructionSet null-ok the instruction set to use.
      * @param appDataDir null-ok the data directory of the app.
+     * @param enableStorageTracer whether Zygote should spawn a storage tracer
+     * for the app.
      *
      * @return 0 if this is the child, pid of the child
      * if this is the parent, or -1 on error.
      */
     public static int forkAndSpecialize(int uid, int gid, int[] gids, int debugFlags,
           int[][] rlimits, int mountExternal, String seInfo, String niceName, int[] fdsToClose,
-          int[] fdsToIgnore, String instructionSet, String appDataDir) {
+          int[] fdsToIgnore, String instructionSet, String appDataDir, boolean enableStorageTracer) {
         VM_HOOKS.preFork();
         // Resets nice priority for zygote process.
         resetNicePriority();
         int pid = nativeForkAndSpecialize(
                   uid, gid, gids, debugFlags, rlimits, mountExternal, seInfo, niceName, fdsToClose,
-                  fdsToIgnore, instructionSet, appDataDir);
+                  fdsToIgnore, instructionSet, appDataDir, enableStorageTracer);
         // Enable tracing as soon as possible for the child process.
         if (pid == 0) {
             Trace.setTracingEnabled(true, debugFlags);
@@ -118,7 +120,7 @@ public final class Zygote {
 
     native private static int nativeForkAndSpecialize(int uid, int gid, int[] gids,int debugFlags,
           int[][] rlimits, int mountExternal, String seInfo, String niceName, int[] fdsToClose,
-          int[] fdsToIgnore, String instructionSet, String appDataDir);
+          int[] fdsToIgnore, String instructionSet, String appDataDir, boolean enableStorageTracer);
 
     /**
      * Called to do any initialization before starting an application.
