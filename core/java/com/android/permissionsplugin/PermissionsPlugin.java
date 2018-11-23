@@ -31,15 +31,11 @@ public class PermissionsPlugin implements Parcelable{
     // subset of supportedAPIs.
     public ArrayMap<String, ArrayList<String>> targetPackageToAPIs;
 
-    // Flag to check if plugin is active
-    public Boolean isActive;
-
     public PermissionsPlugin(String packageName){
         this.packageName = packageName;
 
         // Set default values
         id = -1;
-        isActive = false;
 
         // Initialize data
         supportedPackages = new ArrayList<>();
@@ -77,8 +73,6 @@ public class PermissionsPlugin implements Parcelable{
             ArrayList<String> value = dest.createStringArrayList();
             targetPackageToAPIs.put(key,value);    
         }
-
-        isActive = (dest.readInt() == 1);
     }
 
     @Override
@@ -96,8 +90,6 @@ public class PermissionsPlugin implements Parcelable{
             dest.writeString(key);
             dest.writeStringList(targetPackageToAPIs.get(key));
         }
-
-        dest.writeInt(isActive ? 1 : 0);
     }
 
 
