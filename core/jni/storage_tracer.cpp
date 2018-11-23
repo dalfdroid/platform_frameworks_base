@@ -2,9 +2,12 @@
 
 #include "storage_tracer.h"
 
+#include <elf.h>
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <unistd.h>
+#include <unordered_map>
 
 #include <asm/ptrace.h>
 #include <sys/mman.h>
@@ -24,6 +27,19 @@ static void* gSharedMemory = NULL;
 static sem_t *gAppSem = NULL;
 static sem_t *gTracerSem = NULL;
 static pid_t gAppPid = -1;
+static char* gPathBuf = NULL;
+
+static std::unordered_map<int, bool> syscall_tracker;
+
+#define AARCH64_REG_X0 0
+#define AARCH64_REG_X1 1
+#define AARCH64_REG_X8 8
+
+#define EXTERNAL_STORAGE_PATH_SDCARD "/mnt/sdcard/"
+#define EXTERNAL_STORAGE_PATH_STORAGE "/storage/self/primary/"
+#define EXTERNAL_STORAGE_PATH_MEDIA "/data/media/0/"
+#define EXTERNAL_STORAGE_PATH_EMULATED "/storage/emulated/0/"
+#define EXTERNAL_STORAGE_PATH_MNT "/mnt/user/0/primary/"
 
 extern "C" {
 
@@ -132,11 +148,124 @@ extern "C" {
             goto bail;
         }
 
+        gPathBuf = (char*) mmap(NULL, PATH_MAX,
+                                PROT_READ | PROT_WRITE,
+                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (gPathBuf == MAP_FAILED) {
+            // TODO(?): Detach ptrace?
+            LOG_ERROR_DALF("%s: unable to allocate path buffer memory: %s.", __func__, strerror(errno));
+            setup_success = -1;
+            goto bail;
+        }
+        memset(gPathBuf, 0, PATH_MAX);
+
         sem_post(gTracerSem);
 
 bail:
         munmap(gSharedMemory, PAGE_SIZE);
         return setup_success;
+    }
+
+    __attribute__((unused))
+    static int ReadStringFromPid(int pid, char* src, char *dest) {
+
+        unsigned int i = 0;
+        int ret = 0;
+        unsigned int MAX_LENGTH_PER_READ = sizeof (long);
+
+        do {
+            long val = 0;
+            val = ptrace(PTRACE_PEEKTEXT, pid, src, NULL);
+
+            if (val == -1) {
+                ret = -1;
+                break;
+            }
+            src += MAX_LENGTH_PER_READ;
+
+            char *stringRead = (char *) &val;
+            for (i = 0; i < MAX_LENGTH_PER_READ; ++i, ++stringRead, ++dest) {
+                *dest = *stringRead;
+                if (*dest == '\0') break;
+            }
+        } while (i == MAX_LENGTH_PER_READ);
+
+        return ret;
+    }
+
+    __attribute__((unused))
+    static inline bool starts_with(const char *str, const char *prefix) {
+        unsigned int i = 0;
+        unsigned int minimal = strlen(prefix);
+        if (strlen(str) < minimal) {
+            return false;
+        }
+
+        for (i = 0; i < minimal; i++) {
+            if (str[i] != prefix[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    __attribute__((unused))
+    static inline bool is_on_external_storage(const char *path) {
+        return (starts_with(path, EXTERNAL_STORAGE_PATH_SDCARD) ||
+                starts_with(path, EXTERNAL_STORAGE_PATH_STORAGE) ||
+                starts_with(path, EXTERNAL_STORAGE_PATH_MEDIA) ||
+                starts_with(path, EXTERNAL_STORAGE_PATH_EMULATED) ||
+                starts_with(path, EXTERNAL_STORAGE_PATH_MNT));
+    }
+
+    __attribute__((unused))
+    static int tracer_interpose_on_open(int pid) {
+#if defined (__aarch64__)
+
+        /**
+         * In aarch64 (ARMv8, 64-bit mode), the syscall convention is to place
+         * the arguments in the low-numbered registers (x0, x1, ...) and place
+         * the syscall number in x8. Note also that in aarch64, the openat()
+         * syscall is used to open files; open() is deprecated.
+         */
+        int ret = 0;
+
+        user_pt_regs regs;
+        struct iovec io;
+        io.iov_base = &regs;
+        io.iov_len = sizeof(regs);
+        ret = ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &io);
+
+        uint64_t syscall_number = regs.regs[AARCH64_REG_X8];
+        if (syscall_number == SYS_openat) {
+            // in openat() syscall
+            LOG_DEBUG_DALF("[aarch64] Storage tracer found openat() syscall for %d.", pid);
+
+            char* src = (char*)regs.regs[AARCH64_REG_X1];
+            ret = ReadStringFromPid(pid, src, gPathBuf);
+            if (ret != 0) {
+                LOG_ERROR_DALF("[aarch64] Storage tracer could not read filename string from %d.", pid);
+                return -1;
+            }
+
+            LOG_DEBUG_DALF("[aarch64] Storage tracer discovered access to %s by %d.", gPathBuf, pid);
+            if (gPathBuf[0] != '/') {
+                LOG_ERROR_DALF("[aarch64] Storage tracer does not support relative access to %s by %d.", gPathBuf, pid);
+                return 0;
+            }
+
+            if (!is_on_external_storage(gPathBuf)) {
+                return 0;
+            }
+
+            LOG_DEBUG_DALF("[aarch64] Storage tracer will interpose on %s by %d.", gPathBuf, pid);
+            // TODO(ali): Call the plugin to interpose on the string and pass in the new string.
+        }
+
+        return 0;
+#endif
+        return -1;
     }
 
     void tracer_run_loop() {
@@ -151,6 +280,7 @@ bail:
         int ret = 0;
         int numThreads = 1;
 
+        syscall_tracker[gAppPid] = false;
         ret = ptrace(PTRACE_SYSCALL, gAppPid, 0, 0);
 
         while (numThreads > 0) {
@@ -165,7 +295,24 @@ bail:
                 int statusType = (status >> 8);
 
                 if (WSTOPSIG(status) & 0x80) {
-                    LOG_DEBUG_DALF("Storage tracer detected a syscall for %d", pausedPid);
+                    syscall_tracker[gAppPid] = !syscall_tracker[gAppPid];
+#if defined(__arm__)
+                    LOG_ERROR_DALF("syscall interposition not supported on the arm architecture for %d", pausedPid);
+#elif defined(__aarch64__)
+
+                    if (syscall_tracker[gAppPid]) {
+                        ret = tracer_interpose_on_open(pausedPid);
+                    } else {
+                        ret = 0;
+                    }
+
+                    if (ret < 0) {
+                        LOG_ERROR_DALF("Storage tracer had an unexpected error interposing on open() for %d", pausedPid);
+                        break;
+                    }
+#else
+                    LOG_ERROR_DALF("syscall interposition not supported on unknown architecture for %d", pausedPid);
+#endif
                 } else if (statusType == (SIGTRAP | PTRACE_EVENT_CLONE << 8)) {
                     int newPid = -1;
 
@@ -178,6 +325,7 @@ bail:
 
                     LOG_DEBUG_DALF("Storage tracer detected new thread %d for process %d.", newPid, gAppPid);
                     numThreads++;
+                    syscall_tracker[newPid] = false;
                 } else if (statusType == (SIGTRAP | PTRACE_EVENT_EXIT << 8)) {
                     numThreads--;
                     continue;
@@ -221,6 +369,7 @@ bail:
             }
         }
 
+        munmap(gPathBuf, PATH_MAX);
         LOG_DEBUG_DALF("Storage tracer is all done for process %d!", gAppPid);
     }
 
