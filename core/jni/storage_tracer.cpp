@@ -1,3 +1,22 @@
+/**
+ * This is the storage tracer. It uses ptrace to identify when apps try to use
+ * syscalls used to open files in the external storage partition. For each such
+ * file, it calls into the plugin that interposes on the app's accesses to the
+ * external storage.
+ *
+ * A storage tracer is created for during zygote fork time only if the app has a
+ * storage interposing plugin. If the user decides to apply a storage plugin on
+ * the app after it has been launched, the app needs to be terminated and
+ * restarted.
+ *
+ * At the moment, the storage tracer works only in aarch64 mode. This is simply
+ * a matter of implementation.
+ *
+ * The code here has been inspired by several ptrace examples on the
+ * internet. ReadStringFromPid() and WriteStringToPid(), and the technique of
+ * using space in the unused portion of the thread's stack, were inspired by
+ * https://www.alfonsobeato.net/c/filter-and-modify-system-calls-with-seccomp-and-ptrace/.
+ */
 #define LOG_TAG "Dalf"
 
 #include "storage_tracer.h"
@@ -8,6 +27,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <unordered_map>
+
+#include <android_runtime/AndroidRuntime.h>
 
 #include <asm/ptrace.h>
 #include <sys/mman.h>
@@ -29,10 +50,14 @@ static sem_t *gTracerSem = NULL;
 static pid_t gAppPid = -1;
 static char* gPathBuf = NULL;
 
+static jclass gZygoteClass;
+static jmethodID gCallExternalStoragePlugin;
+
 static std::unordered_map<int, bool> syscall_tracker;
 
 #define AARCH64_REG_X0 0
 #define AARCH64_REG_X1 1
+#define AARCH64_REG_X2 2
 #define AARCH64_REG_X8 8
 
 #define EXTERNAL_STORAGE_PATH_SDCARD "/mnt/sdcard/"
@@ -40,6 +65,10 @@ static std::unordered_map<int, bool> syscall_tracker;
 #define EXTERNAL_STORAGE_PATH_MEDIA "/data/media/0/"
 #define EXTERNAL_STORAGE_PATH_EMULATED "/storage/emulated/0/"
 #define EXTERNAL_STORAGE_PATH_MNT "/mnt/user/0/primary/"
+
+#ifdef __aarch64__
+#define RED_ZONE 128
+#endif
 
 extern "C" {
 
@@ -106,7 +135,7 @@ extern "C" {
         }
     }
 
-    int tracer_postfork_setup(pid_t appPid) {
+    int tracer_postfork_setup(pid_t appPid, jclass zygoteClass, jmethodID callExternalStoragePlugin) {
         LOG_DEBUG_DALF("%s: setting up for %d!", __func__, appPid);
 
         if (gSharedMemory == NULL) {
@@ -116,6 +145,9 @@ extern "C" {
         int setup_success = 0;
 
         gAppPid = appPid;
+        gZygoteClass = zygoteClass;
+        gCallExternalStoragePlugin = callExternalStoragePlugin;
+
         sem_wait(gAppSem);
 
         int status = 0;
@@ -194,6 +226,33 @@ bail:
     }
 
     __attribute__((unused))
+    static int WriteStringToPid(int pid, const char* str, char *dest) {
+
+        unsigned int i = 0;
+        char c = '\0';
+
+        unsigned int MAX_LENGTH_PER_WRITE = sizeof (long);
+        char val[MAX_LENGTH_PER_WRITE];
+
+        do {
+            for (i = 0; i < sizeof(long); ++i, ++str) {
+                c = *str;
+                val[i] = c;
+                if (c == '\0') break;
+            }
+
+            int ret = ptrace(PTRACE_POKETEXT, pid, dest, *(long *)val);
+            if (ret < 0) {
+                return -1;
+            }
+
+            dest += MAX_LENGTH_PER_WRITE;
+        } while (c);
+
+        return 0;
+    }
+
+    __attribute__((unused))
     static inline bool starts_with(const char *str, const char *prefix) {
         unsigned int i = 0;
         unsigned int minimal = strlen(prefix);
@@ -260,7 +319,51 @@ bail:
             }
 
             LOG_DEBUG_DALF("[aarch64] Storage tracer will interpose on %s by %d.", gPathBuf, pid);
-            // TODO(ali): Call the plugin to interpose on the string and pass in the new string.
+            JNIEnv* env = android::AndroidRuntime::getJNIEnv();
+            jstring javaPath = env->NewStringUTF(gPathBuf);
+            if (javaPath == NULL) {
+                LOG_ERROR_DALF("[aarch64] Could not construct string path from %s for %d.", gPathBuf, pid);
+                return -1;
+            }
+
+            uint64_t openMode = regs.regs[AARCH64_REG_X2];
+            jint javaOpenMode = (int) openMode;
+
+            jstring javaPathFromPlugin = (jstring) env->CallStaticObjectMethod(
+                gZygoteClass, gCallExternalStoragePlugin, javaPath, javaOpenMode);
+
+            if (javaPathFromPlugin == NULL) {
+                LOG_DEBUG_DALF("[aarch64] Storage tracer will not perturb access to %s for %d, javaPath is %p", gPathBuf, pid, javaPathFromPlugin);
+                return 0;
+            }
+
+            const char *pathFromPlugin = env->GetStringUTFChars(javaPathFromPlugin, NULL);
+            unsigned int newPathLen = strlen(pathFromPlugin) + 1; // 1 extra for terminating character.
+            if (newPathLen > PATH_MAX) {
+                LOG_ERROR_DALF("[aarch64] Path (%s) from plugin exceeds maximum length;"
+                               " Storage tracer cannot use it for %d", pathFromPlugin, pid);
+                return -1;
+            }
+
+            uint64_t sp = regs.sp;
+            uint64_t newStringLocation = sp - newPathLen - RED_ZONE;
+            ret = WriteStringToPid(pid, pathFromPlugin, (char*) newStringLocation);
+            if (ret < 0) {
+                LOG_ERROR_DALF("[aarch64] Could not copy new path %s to %d; failed with %s",
+                               pathFromPlugin, pid, strerror(errno));
+                return -1;
+            }
+
+            regs.regs[AARCH64_REG_X1] = newStringLocation;
+            ret = ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &io);
+            if (ret < 0) {
+                LOG_ERROR_DALF("[aarch64] Could not update arguments to openat() for %d", pid);
+                return -1;
+            }
+
+            env->ReleaseStringUTFChars(javaPathFromPlugin, pathFromPlugin);
+            env->DeleteLocalRef(javaPathFromPlugin);
+            env->DeleteLocalRef(javaPath);
         }
 
         return 0;

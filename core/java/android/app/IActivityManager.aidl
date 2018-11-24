@@ -643,4 +643,6 @@ interface IActivityManager {
 
     // Start of Dalf transactions
     String[] getPackagesForPid(int pid);
+
+    IBinder getStorageInterposer(String packageName);
 }

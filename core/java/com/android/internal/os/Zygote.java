@@ -21,6 +21,7 @@ import android.os.Trace;
 import dalvik.system.ZygoteHooks;
 import android.system.ErrnoException;
 import android.system.Os;
+import android.os.PermissionsPluginManager;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -61,6 +62,9 @@ public final class Zygote {
     public static final int MOUNT_EXTERNAL_WRITE = 3;
 
     private static final ZygoteHooks VM_HOOKS = new ZygoteHooks();
+
+    /** This will be used by the tracer */
+    private static String mPackageName = "";
 
     private Zygote() {}
 
@@ -124,6 +128,7 @@ public final class Zygote {
              */
             if (pid < -1) {
                 // This will not return.
+                mPackageName = niceName;
                 nativeRunStorageTracer();
             }
         }
@@ -197,6 +202,10 @@ public final class Zygote {
     private static void callPostForkChildHooks(int debugFlags, boolean isSystemServer,
             String instructionSet) {
         VM_HOOKS.postForkChild(debugFlags, isSystemServer, instructionSet);
+    }
+
+    private static String callExternalStoragePlugin(String filename, int mode) {
+        return PermissionsPluginManager.reportExternalStorageAccess(mPackageName, filename, mode);
     }
 
     /**

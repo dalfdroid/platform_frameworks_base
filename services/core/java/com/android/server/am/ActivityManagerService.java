@@ -305,6 +305,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.ParcelFileDescriptor;
+import android.os.PermissionsPluginManager;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.PowerManagerInternal;
@@ -24693,4 +24694,19 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         return ret;
     }
+
+    /**
+     * Returns the storage interposer applied for a given application.
+     *
+     * @param packageName The package name of the app.
+     *
+     * @return The storage interposer as a binder objec.
+     *
+     * {@hide}
+     */
+    @Override
+    public IBinder getStorageInterposer(String packageName) {
+        return PermissionsPluginManager.getStorageInterposer(packageName);
+    }
+
 }

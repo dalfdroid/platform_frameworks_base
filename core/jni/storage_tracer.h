@@ -4,6 +4,7 @@
 #include <semaphore.h>
 
 #include <sys/types.h>
+#include <nativehelper/JNIHelp.h>
 
 extern "C" {
 
@@ -43,7 +44,7 @@ extern "C" {
    * This should be called in the tracer process after it has forked
    * successfully, to finish setting up the tracer.
    */
-  int tracer_postfork_setup(pid_t appPid);
+  int tracer_postfork_setup(pid_t appPid, jclass zygoteClass, jmethodID callExternalStoragePlugin);
 
   /**
    * Runs the main tracer loop to interpose on each syscall.

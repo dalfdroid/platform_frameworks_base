@@ -16,11 +16,12 @@ import android.view.Surface;
 import com.android.permissionsplugin.PermissionsPlugin;
 import com.android.permissionsplugin.PermissionsPluginOptions;
 
-import java.util.Arrays;
 import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Collections;
+import java.util.Objects;
 
 /**
  * {@hide}
@@ -38,6 +39,15 @@ public class PermissionsPluginManager {
 
     private static final HashMap<Integer, String> pidsToPackage
         = new HashMap<>();
+
+    /**
+     * If an app has has a storage interposing plugin, it gets it own separate
+     * instance of the storage tracer. The sStorageTracerPackage and
+     * sStorageInterposer variables below are exclusively used by the storage
+     * tracer process.
+     */
+    private static String sStorageTracerPackage = null;
+    private static IPluginStorageInterposer sStorageInterposer = null;
 
     private static synchronized PluginProxy connectToPluginService(
             String pluginPackage, List<String> interposers) {
@@ -509,6 +519,115 @@ public class PermissionsPluginManager {
         }
     }
 
+    private IBinder getStorageInterposerImpl(String targetPkg) {
+        // Check if any active plugin is available for the target package.
+        // If so, proceed with the rest of the code. Otherwise, return null.
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        if (PermissionsPluginOptions.DEBUG) {
+            Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList +
+                  " active plugins for app: " + targetPkg);
+        }
+
+        if (pluginList == null || pluginList.isEmpty()) {
+            return null;
+        }
+
+        // TODO: For now, we only support one active plugin per app.  In
+        // particular, we consider the first available active plugin.  In
+        // future, we should take into account multiple plugins applied to the
+        // same app.
+        PermissionsPlugin plugin = pluginList.get(0);
+
+        PluginProxy pluginProxy =
+            connectToPluginService(plugin.packageName, plugin.supportedAPIs);
+
+        if (pluginProxy == null || !pluginProxy.isConnected()) {
+            return null;
+        }
+
+        try {
+            IPluginStorageInterposer storageInterposer =
+                pluginProxy.getStorageInterposer();
+            if (storageInterposer != null) {
+                return storageInterposer.asBinder();
+            } else {
+                Log.d(PermissionsPluginOptions.TAG, "Plugin " + plugin.packageName
+                    + " does not have a storage interposer even though it's activated for "
+                    + targetPkg);
+            }
+        } catch (Exception ex) {
+            Log.d(PermissionsPluginOptions.TAG,
+                "Unexpected exception while reporting external storage access to proxy: " + ex);
+        }
+
+        return null;
+    }
+
+    private void setInterposerForStorageTracer(String packageName) {
+        if (sStorageTracerPackage == null) {
+            sStorageTracerPackage = packageName;
+        } else {
+            if (!Objects.equals(packageName, sStorageTracerPackage)) {
+                throw new RuntimeException("Storage tracer's package has unexpectedly switched:"
+                    + " from " + sStorageTracerPackage
+                    + " to " + packageName);
+            }
+        }
+
+        IActivityManager activityManager = ActivityManager.getService();
+        try {
+            IBinder binder = activityManager.getStorageInterposer(packageName);
+            sStorageInterposer = IPluginStorageInterposer.Stub.asInterface(binder);
+        } catch (Exception ex) {
+            Log.d(PermissionsPluginOptions.TAG,
+                "Unexpected excefption while obtaining storage interposer for tracer: " + ex);
+        }
+    }
+
+    private String reportExternalStorageAccessImpl(String packageName,
+            String path, int mode) {
+
+        /**
+         * This method is meant to be called by the storage tracer process. As
+         * of writing, the storage tracer is a bit of a weird Android
+         * process. It is a privileged process but it is neither a system
+         * service nor an app. It does not have access to things like a
+         * Context. Therefore, trying to bind to a plugin service directly using
+         * "bindService()" will not work.
+         *
+         * However, the storage tracer does have access to the system
+         * services. Hence, we can ask a suitable system service to bind to the
+         * plugin service on the storage tracer's behalf, and to return the
+         * binder token of the plugin's IPluginStorageInterposer. With this
+         * binder token, the storage tracer can directly communicate with the
+         * plugin.
+         */
+        if (sStorageInterposer == null) {
+            setInterposerForStorageTracer(packageName);
+        }
+
+        try {
+             return sStorageInterposer.beforeFileOpen(packageName, path);
+        } catch (Exception ignored) { }
+
+        /**
+         * If we fail to communicate with the storage interposer, the binder
+         * connection might have died for some reason. Let's try to get a new
+         * connection to the storage interposer.
+         */
+        setInterposerForStorageTracer(packageName);
+
+        try {
+            return sStorageInterposer.beforeFileOpen(packageName, path);
+        } catch (Exception ex) {
+            Log.d(PermissionsPluginOptions.TAG,
+                "Could not communicate with the storage interposer for "
+                + packageName);
+        }
+
+        return null;
+    }
+
     /**
      * Reports a camera stream to the plugin and returns a new surface target if
      * the plugin decides to interpose on the stream.
@@ -528,6 +647,17 @@ public class PermissionsPluginManager {
 
         PermissionsPluginManager local = getInstance();
         local.reportSurfaceDisconnectionImpl(packageName, cameraStreamInfo);
+    }
+
+    public static IBinder getStorageInterposer(String packageName) {
+        PermissionsPluginManager local = getInstance();
+        return local.getStorageInterposerImpl(packageName);
+    }
+
+    public static String reportExternalStorageAccess(String packageName, String path, int mode) {
+
+        PermissionsPluginManager local = getInstance();
+        return local.reportExternalStorageAccessImpl(packageName, path, mode);
     }
 
     // Retrieve list of active permissions plugin for a given package    

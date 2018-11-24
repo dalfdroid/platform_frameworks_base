@@ -11,8 +11,8 @@ interface IPluginStorageInterposer {
     /**
      * This will be called when an app tries to load a file in the external
      * storage partition. The plugin can perform one of three things: (i)
-     * prevent the file from being opened by returning a null or empty string,
-     * (ii) allow access by returning the same filepath without any
+     * prevent the file from being opened by returning an empty string, (ii)
+     * allow access by returning null or the same filepath without any
      * modifications, or (iii) choose the file that should be opened instead by
      * providing a new filepath.
      *
@@ -26,8 +26,8 @@ interface IPluginStorageInterposer {
      * @param The path to the file that will be opened.
      *
      * @return The path that should be opened instead. To prevent the file from
-     * being opened, return null or the empty string; to allow the file to be
-     * opened, return the same filepath without any modifications; to open a
+     * being opened, return the empty string; to allow the file to be opened,
+     * return null or the same filepath without any modifications; to open a
      * different file instead, return a new filepath.
      */
     String beforeFileOpen(String targetAppPkg, String filepath);

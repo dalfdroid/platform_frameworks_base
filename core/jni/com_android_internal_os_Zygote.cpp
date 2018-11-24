@@ -76,6 +76,7 @@ static pid_t gSystemServerPid = 0;
 static const char kZygoteClassName[] = "com/android/internal/os/Zygote";
 static jclass gZygoteClass;
 static jmethodID gCallPostForkChildHooks;
+static jmethodID gCallExternalStoragePlugin;
 
 // Must match values in com.android.internal.os.Zygote.
 enum MountExternalKind {
@@ -702,9 +703,31 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
 
       if (pid == 0) {
         // the child process (the tracer)
+
+        // Clean up any descriptors which must be closed immediately
+        DetachDescriptors(env, fdsToClose);
+
+        // Re-open all remaining open file descriptors so that they aren't shared
+        // with the zygote across a fork.
+        if (!gOpenFdTable->ReopenOrDetach()) {
+          RuntimeAbort(env, __LINE__, "Unable to reopen whitelisted descriptors.");
+        }
+
+        if (sigprocmask(SIG_UNBLOCK, &sigchld, nullptr) == -1) {
+          ALOGE("sigprocmask(SIG_SETMASK, { SIGCHLD }) failed: %s", strerror(errno));
+          RuntimeAbort(env, __LINE__, "Call to sigprocmask(SIG_UNBLOCK, { SIGCHLD }) failed.");
+        }
+
+        SetThreadName("storage tracer");
         UnsetSigChldHandler();
 
-        int ret = tracer_postfork_setup(app_child_pid);
+        env->CallStaticVoidMethod(gZygoteClass, gCallPostForkChildHooks, debug_flags,
+                                  is_system_server, instructionSet);
+        if (env->ExceptionCheck()) {
+            RuntimeAbort(env, __LINE__, "Error calling post fork hooks.");
+        }
+
+        int ret = tracer_postfork_setup(app_child_pid, gZygoteClass, gCallExternalStoragePlugin);
         if (ret < 0) {
           // Had a very bad error setting up the tracer. Just kill it.
           exit(0);
@@ -887,6 +910,9 @@ int register_com_android_internal_os_Zygote(JNIEnv* env) {
   gZygoteClass = MakeGlobalRefOrDie(env, FindClassOrDie(env, kZygoteClassName));
   gCallPostForkChildHooks = GetStaticMethodIDOrDie(env, gZygoteClass, "callPostForkChildHooks",
                                                    "(IZLjava/lang/String;)V");
+
+  gCallExternalStoragePlugin = GetStaticMethodIDOrDie(env, gZygoteClass, "callExternalStoragePlugin",
+                                                   "(Ljava/lang/String;I)Ljava/lang/String;");
 
   return RegisterMethodsOrDie(env, "com/android/internal/os/Zygote", gMethods, NELEM(gMethods));
 }
