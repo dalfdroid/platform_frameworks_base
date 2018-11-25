@@ -4,7 +4,7 @@
  * file, it calls into the plugin that interposes on the app's accesses to the
  * external storage.
  *
- * A storage tracer is created for during zygote fork time only if the app has a
+ * A storage tracer is created during zygote fork time only if the app has a
  * storage interposing plugin. If the user decides to apply a storage plugin on
  * the app after it has been launched, the app needs to be terminated and
  * restarted.
@@ -367,8 +367,9 @@ bail:
         }
 
         return 0;
-#endif
+#else
         return -1;
+#endif
     }
 
     void tracer_run_loop() {
