@@ -3421,8 +3421,7 @@ public class PackageManagerService extends IPackageManager.Stub
             }
 
             // Check if the target package is supported by the plugin
-            if (!(plugin.supportedPackages.contains(targetPackage)) ||
-                (plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES))) {
+            if (!(plugin.supportedPackages.contains(targetPackage) || plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES))) {
                 Slog.e(PermissionsPluginOptions.TAG,"The specified target package " + targetPackage + " is not supported by plugin " + pluginPackage);     
                 return false;
             }

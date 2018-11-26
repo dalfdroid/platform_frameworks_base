@@ -288,11 +288,11 @@ public class PermissionsPluginDb{
                     packageValues.put(TargetPackageEntry.COLUMN_NAME_IS_SELECTED,selected?1:0);
                 
                     // Prepare selection criteria to select the desired row
-                    String packageSelection = TargetPackageEntry.COLUMN_NAME_PLUGIN_ID + " = ? ";
-                    packageSelection += " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " = " + pkg;
-                    packageSelection += " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS + " = " + api;
+                    String packageSelection = TargetPackageEntry.COLUMN_NAME_PLUGIN_ID + " = ? "
+                                                + " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES + " = ? "
+                                                + " AND " + TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS + " =  ? ";
                           
-                    String[] packageSelectionArgs = new String[]{String.valueOf(plugin.id)};
+                    String[] packageSelectionArgs = new String[]{String.valueOf(plugin.id),pkg,api};
             
                     updatedRows = db.update(TargetPackageEntry.TABLE_NAME, packageValues, packageSelection, packageSelectionArgs);
                 }
@@ -371,7 +371,9 @@ public class PermissionsPluginDb{
         String[] selectionArgs = new String[]{String.valueOf(pluginId)};
 
         // Get the columns we are interested in
-        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS};
+        String[] columns = new String[]{TargetPackageEntry.COLUMN_NAME_SUPPORTED_PACKAGES,
+                                        TargetPackageEntry.COLUMN_NAME_SUPPORTED_APIS,
+                                        TargetPackageEntry.COLUMN_NAME_IS_SELECTED};
 
         // Retrieve selected packages and APIs of given plugin from target package table
         Cursor cursor = db.query(TargetPackageEntry.TABLE_NAME,columns,selection,selectionArgs,null,null,null,null);
