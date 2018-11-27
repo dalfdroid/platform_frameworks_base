@@ -6,6 +6,12 @@
 #include <sys/types.h>
 #include <nativehelper/JNIHelp.h>
 
+#define EXTERNAL_STORAGE_PATH_SDCARD "/mnt/sdcard/"
+#define EXTERNAL_STORAGE_PATH_STORAGE "/storage/self/primary/"
+#define EXTERNAL_STORAGE_PATH_MEDIA "/data/media/0/"
+#define EXTERNAL_STORAGE_PATH_EMULATED "/storage/emulated/0/"
+#define EXTERNAL_STORAGE_PATH_MNT "/mnt/user/0/primary/"
+
 extern "C" {
 
   /**
@@ -51,6 +57,31 @@ extern "C" {
    */
   void tracer_run_loop();
 
+  __attribute__((unused))
+  inline bool starts_with(const char *str, const char *prefix) {
+    unsigned int i = 0;
+    unsigned int minimal = strlen(prefix);
+    if (strlen(str) < minimal) {
+      return false;
+    }
+
+    for (i = 0; i < minimal; i++) {
+      if (str[i] != prefix[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  __attribute__((unused))
+  inline bool is_on_external_storage(const char *path) {
+    return (starts_with(path, EXTERNAL_STORAGE_PATH_SDCARD) ||
+            starts_with(path, EXTERNAL_STORAGE_PATH_STORAGE) ||
+            starts_with(path, EXTERNAL_STORAGE_PATH_MEDIA) ||
+            starts_with(path, EXTERNAL_STORAGE_PATH_EMULATED) ||
+            starts_with(path, EXTERNAL_STORAGE_PATH_MNT));
+  }
 } // extern "C"
 
 #endif // FRAMEWORKS_BASE_CORE_JNI_STORAGE_TRACER_H_
