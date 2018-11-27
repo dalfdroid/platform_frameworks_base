@@ -53,6 +53,10 @@ static char* gPathBuf = NULL;
 static jclass gZygoteClass;
 static jmethodID gCallExternalStoragePlugin;
 
+/**
+ * This is used to differentiate between syscall-enter-stop and
+ * syscall-exit-stop for each syscall in each tracked thread.
+ */
 static std::unordered_map<int, bool> syscall_tracker;
 
 #ifdef __aarch64__
@@ -214,12 +218,12 @@ bail:
                 int statusType = (status >> 8);
 
                 if (WSTOPSIG(status) & 0x80) {
-                    syscall_tracker[gAppPid] = !syscall_tracker[gAppPid];
+                    syscall_tracker[pausedPid] = !syscall_tracker[pausedPid];
 #if defined(__arm__)
                     LOG_ERROR_DALF("syscall interposition not supported on the arm architecture for %d", pausedPid);
 #elif defined(__aarch64__)
 
-                    if (syscall_tracker[gAppPid]) {
+                    if (syscall_tracker[pausedPid]) {
                         ret = aarch64_tracer_interpose_on_open(pausedPid);
                     } else {
                         ret = 0;
