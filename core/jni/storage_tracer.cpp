@@ -203,7 +203,6 @@ bail:
         int ret = 0;
         int numThreads = 1;
 
-        syscall_tracker[gAppPid] = false;
         ret = ptrace(PTRACE_SYSCALL, gAppPid, 0, 0);
 
         while (numThreads > 0) {
@@ -218,6 +217,11 @@ bail:
                 int statusType = (status >> 8);
 
                 if (WSTOPSIG(status) & 0x80) {
+
+                    if (syscall_tracker.find(pausedPid) == syscall_tracker.end()) {
+                        syscall_tracker[pausedPid] = false;
+                    }
+
                     syscall_tracker[pausedPid] = !syscall_tracker[pausedPid];
 #if defined(__arm__)
                     LOG_ERROR_DALF("syscall interposition not supported on the arm architecture for %d", pausedPid);
@@ -248,7 +252,6 @@ bail:
 
                     LOG_DEBUG_DALF("Storage tracer detected new thread %d for process %d.", newPid, gAppPid);
                     numThreads++;
-                    syscall_tracker[newPid] = false;
                 } else if (statusType == (SIGTRAP | PTRACE_EVENT_EXIT << 8)) {
                     numThreads--;
                     continue;
