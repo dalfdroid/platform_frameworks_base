@@ -60,6 +60,22 @@ public class PermissionsPluginManager {
         perturbableToInterposer.put(Perturbable.STORAGE,PluginProxy.INTERPOSER_STORAGE);
     }
 
+    /**
+     * A cache to save active plugins of the app.
+     * It is maintained to avoid performing IPC call to
+     * PackageManagerService's getActivePermissionsPluginsForApp API.
+     *
+     * The key is targetPackage+targetAPI.
+     * The value is a list of active permissions plugins selected by user.
+     *
+     * Note: The cache should be updated everytime user modifies
+     * the plugin selection for a target app/API. Otherwise,
+     * the changes will not be effective until the next reboot.
+     * 
+     */
+    private static final HashMap<String, List<PermissionsPlugin>> sAppToPermissionsPlugins 
+        = new HashMap<>();
+
     private static synchronized PluginProxy connectToPluginService(
             String pluginPackage, List<String> interposers) {
 
@@ -657,14 +673,36 @@ public class PermissionsPluginManager {
     }
 
     // Retrieve list of active permissions plugin for a given package    
-    private List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI){
+    private static synchronized List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI){
+
+        // Check if the plugin is available in the cache
+        String key = appPackage+targetAPI;
+        if (sAppToPermissionsPlugins.containsKey(key)) {
+            List<PermissionsPlugin> activePlugins = sAppToPermissionsPlugins.get(key);
+            if (PermissionsPluginOptions.DEBUG) {
+                Log.d(PermissionsPluginOptions.TAG, "Found " + activePlugins.size() + " active plugins in the cache for target package-api " + key);
+            }
+            return activePlugins;
+        }
+
         try {
             ParceledListSlice<PermissionsPlugin> parceledList =
                     ActivityThread.getPackageManager().getActivePermissionsPluginsForApp(appPackage, targetAPI);
             if (parceledList == null) {
                 return Collections.emptyList();
             }
-            return parceledList.getList();
+
+            List<PermissionsPlugin> activePlugins = parceledList.getList();
+
+            // Cache retrived plugin list
+            if (activePlugins.size() > 0) {
+                sAppToPermissionsPlugins.put(key,activePlugins);
+                if (PermissionsPluginOptions.DEBUG) {
+                    Log.d(PermissionsPluginOptions.TAG, "Cached " + activePlugins.size() + " active plugins for target package-api " + key);
+                }            
+            }
+            
+            return activePlugins;
         } catch (RemoteException e) {
             Log.d(PermissionsPluginOptions.TAG, "Could not retrieve permissions plugin for app " + appPackage + ". RemoteException: " + e);
             return Collections.emptyList();
