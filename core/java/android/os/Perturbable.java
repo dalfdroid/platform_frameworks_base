@@ -3,6 +3,7 @@ package android.os;
 import android.net.Uri;
 
 import android.provider.CalendarContract;
+import android.provider.ContactsContract;
 
 /**
  * An enum of perturbable object types.
@@ -37,8 +38,8 @@ public enum Perturbable {
         if (url != null) {
 
             String authority = url.getAuthority();
-
-            if (url.toString().contains("contacts")) {
+            
+            if(authority.equals(ContactsContract.AUTHORITY)){                
                 return Perturbable.CONTACTS;
             }
 
