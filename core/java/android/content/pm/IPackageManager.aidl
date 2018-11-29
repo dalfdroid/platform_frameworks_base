@@ -167,8 +167,8 @@ interface IPackageManager {
             String resolvedType, int flags, int userId);
 
 
-    // Return a list of active Permissions Plugin for a given package name
-    ParceledListSlice getActivePermissionsPluginsForApp(in String appPackage);
+    // Return a list of active Permissions Plugin for a given package name and target API
+    ParceledListSlice getActivePermissionsPluginsForApp(in String appPackage, in String targetAPI);
 
     // Return true if the specified app has a plugin that interposes on the external storage
     boolean hasStoragePlugin(in String packageName);
@@ -176,20 +176,8 @@ interface IPackageManager {
     // Return a list of installed permissions plugins
     ParceledListSlice getInstalledPermissionsPlugins();
 
-    // Set activation status of the permissions plugin
-    boolean setActivationStatusForPermissionsPlugin(in String pluginPackage, in boolean isActive);
-
-    // Add target packages of the plugin
-    boolean addTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages, in boolean reset);
-
-    // Remove target packages of the plugin
-    boolean removeTargetPackagesForPlugin(in String pluginPackage, in List<String> targetPackages);
-
-    // Add target apis of the plugin
-    boolean addTargetAPIsForPlugin(in String pluginPackage, in List<String> targetAPIs, in boolean reset);
-
-    // Remove target apis of the plugin
-    boolean removeTargetAPIsForPlugin(in String pluginPackage, in List<String> targetAPIs);
+    // Activate/deactive the plugin for given target package/api.
+    boolean activatePlugin(in String pluginPackage, in String targetPackage, in String targetAPI, in boolean activate);
 
     // Return list of unstruted packages installed
     List<String> getInstalledUntrustedPackages();

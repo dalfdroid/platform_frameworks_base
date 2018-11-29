@@ -3258,9 +3258,9 @@ public abstract class PackageManager {
             @ComponentInfoFlags int flags) throws NameNotFoundException;
 
 
-    // Retun a list of all active permissions plugins that support given package.
+    // Retun a list of all active permissions plugins for given target app and target API.
     /** {@hide} */    
-    public abstract List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage);
+    public abstract List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI);
 
     // Retun a list of all installed permissions plugins.
     /** {@hide} */    
@@ -3270,26 +3270,9 @@ public abstract class PackageManager {
     /** {@hide} */    
     public abstract List<String> getInstalledUntrustedPackages();
 
-    // Set activation status of the given permissions plugin.
+    // Activate/deactive the plugin for given target package/api.
     /** {@hide} */    
-    public abstract boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive);
-
-    // Add target packages of the plugin
-    /** {@hide} */    
-    public abstract boolean addTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages, boolean reset);
-
-    // Remove target packages of the plugin
-    /** {@hide} */    
-    public abstract boolean removeTargetPackagesForPlugin(String pluginPackage,  List<String> targetPackages);
-
-    // Add target apis of the plugin
-    /** {@hide} */    
-    public abstract boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset);
-
-    // Remove target apis of the plugin
-    /** {@hide} */    
-    public abstract boolean removeTargetAPIsForPlugin(String pluginPackage,  List<String> targetAPIs);
-
+    public abstract boolean activatePlugin(String pluginPackage, String targetPackage, String targetAPI, boolean activate);
 
     /**
      * Return a List of all packages that are installed on the device.

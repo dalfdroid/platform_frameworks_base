@@ -4,6 +4,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.PluginProxy;
 
+import android.util.ArrayMap;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,29 +25,26 @@ public class PermissionsPlugin implements Parcelable{
     // Apis supported by this plugin
     public ArrayList<String> supportedAPIs;
 
-    // Apps selected by user to apply this plugin to
-    // must be a subset of the supportedPackages
-    public ArrayList<String> targetPackages;
-
-    // APIs selected by user for this plugin
-    // must be a subset of the supportedAPIs
-    public ArrayList<String> targetAPIs;
-
-    // Flag to check if plugin is active
-    public Boolean isActive;
+    // A map of target package to APIs selected by user.
+    // Keys are target packages and must be subset of supportedPackages.
+    // Values are list of targetAPIs for the target package and must be
+    // subset of supportedAPIs.
+    // Note: Currently we consider '*' (indicating all packages)
+    // as a special package name and use it just like any other package/app.
+    // The actual interpretation of '*' happens in PackageManagerService.
+    // The permissions plugin object, parser and db are agnostic to the meaning of '*'.
+    public ArrayMap<String, ArrayList<String>> targetPackageToAPIs;
 
     public PermissionsPlugin(String packageName){
         this.packageName = packageName;
 
         // Set default values
         id = -1;
-        isActive = false;
 
         // Initialize data
         supportedPackages = new ArrayList<>();
         supportedAPIs = new ArrayList<>();
-        targetPackages = new ArrayList<>();
-        targetAPIs = new ArrayList<>();
+        targetPackageToAPIs = new ArrayMap<>();
     }
 
     @Override
@@ -68,9 +66,17 @@ public class PermissionsPlugin implements Parcelable{
         packageName = dest.readString();
         supportedPackages = dest.createStringArrayList();
         supportedAPIs = dest.createStringArrayList();
-        targetPackages = dest.createStringArrayList();
-        targetAPIs = dest.createStringArrayList();
-        isActive = (dest.readInt() == 1);
+
+        // Read targetPackageToAPIs ArrayMap
+        // by first reading size of the map
+        // and then reading key value pairs
+        int n = dest.readInt();
+        targetPackageToAPIs = new ArrayMap<>(n);
+        for (int i=0; i<n; i++) {
+            String key = dest.readString();
+            ArrayList<String> value = dest.createStringArrayList();
+            targetPackageToAPIs.put(key,value);    
+        }
     }
 
     @Override
@@ -79,9 +85,15 @@ public class PermissionsPlugin implements Parcelable{
         dest.writeString(packageName);
         dest.writeStringList(supportedPackages);
         dest.writeStringList(supportedAPIs);
-        dest.writeStringList(targetPackages);
-        dest.writeStringList(targetAPIs);
-        dest.writeInt(isActive ? 1 : 0);
+
+        // Write targetPackageToAPIs ArrayMap
+        // by first writing the size of the map
+        // and then writing key value pairs 
+        dest.writeInt(targetPackageToAPIs.size());
+        for (String key : targetPackageToAPIs.keySet()) {
+            dest.writeString(key);
+            dest.writeStringList(targetPackageToAPIs.get(key));
+        }
     }
 
 

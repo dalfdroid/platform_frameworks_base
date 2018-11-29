@@ -48,6 +48,17 @@ public class PermissionsPluginManager {
      */
     private static String sStorageTracerPackage = null;
     private static IPluginStorageInterposer sStorageInterposer = null;
+    
+    private static final HashMap<Perturbable, String> perturbableToInterposer
+        = new HashMap<>();
+
+    static {
+        perturbableToInterposer.put(Perturbable.LOCATION,PluginProxy.INTERPOSER_LOCATION);
+        perturbableToInterposer.put(Perturbable.CONTACTS,PluginProxy.INTERPOSER_CONTACTS);
+        perturbableToInterposer.put(Perturbable.CALENDAR,PluginProxy.INTERPOSER_CALENDAR);
+        perturbableToInterposer.put(Perturbable.CAMERA,PluginProxy.INTERPOSER_CAMERA);
+        perturbableToInterposer.put(Perturbable.STORAGE,PluginProxy.INTERPOSER_STORAGE);
+    }
 
     private static synchronized PluginProxy connectToPluginService(
             String pluginPackage, List<String> interposers) {
@@ -139,18 +150,11 @@ public class PermissionsPluginManager {
     }
 
     private void perturbObject(String targetPkg, PluginProxy pluginProxy,
-            PerturbableObject perturbableObject, PermissionsPlugin plugin) {
+            PerturbableObject perturbableObject) {
         Parcelable parcelable = perturbableObject.mParcelable;
 
         switch (perturbableObject.mPerturbableType) {
         case LOCATION:
-            // Check if user wants to perturb the location for this app
-            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_LOCATION)){
-                if(PermissionsPluginOptions.DEBUG){
-                    Log.d(PermissionsPluginOptions.TAG,"Skipping location perturbation due to user preference.");
-                }
-                break;
-            }
 
             Location location = (Location) parcelable;
             IPluginLocationInterposer locInterposer =
@@ -169,13 +173,6 @@ public class PermissionsPluginManager {
             break;
 
         case CONTACTS:
-            // Check if user wants to perturb contacts for this app
-            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CONTACTS)){
-                if(PermissionsPluginOptions.DEBUG){
-                    Log.d(PermissionsPluginOptions.TAG,"Skipping contacts perturbation due to user preference.");
-                }
-                break;
-            }
 
             CursorWindow window = (CursorWindow) parcelable;
             IPluginContactsInterposer contactsInterposer =
@@ -209,13 +206,6 @@ public class PermissionsPluginManager {
             break;
 
         case CALENDAR:
-            // Check if user wants to perturb calendar for this app
-            if(!plugin.targetAPIs.contains(PluginProxy.INTERPOSER_CALENDAR)){
-                if(PermissionsPluginOptions.DEBUG){
-                    Log.d(PermissionsPluginOptions.TAG,"Skipping calendar perturbation due to user preference.");
-                }
-                break;
-            }
 
             CursorWindow calenarWindow = (CursorWindow) parcelable;
             IPluginCalendarInterposer calendarInterposer =
@@ -263,34 +253,6 @@ public class PermissionsPluginManager {
             return null;
         }
 
-        // Check if any active plugin is available for the target package.
-        // If so, proceed with the rest of the code. Otherwise, return null.
-        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
-        if (PermissionsPluginOptions.DEBUG) {
-            Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
-                  " active plugins for app: " + targetPkg);
-        }
-
-        if (pluginList == null || pluginList.isEmpty()) {
-            return null;
-        }
-
-        // TODO: For now, we only support one active plugin per app.
-        // In particular, we consider the first available active plugin.
-        // In future, we should allow multiple plugins.
-        PermissionsPlugin plugin = pluginList.get(0);
-
-        PluginProxy pluginProxy =
-            connectToPluginService(plugin.packageName, plugin.supportedAPIs);
-
-        if (pluginProxy == null || !pluginProxy.isConnected()) {
-            return null;
-        }
-
-        if (PermissionsPluginOptions.DEBUG) {
-            Log.d(PermissionsPluginOptions.TAG, "Proceeding to perturb data for " + targetPkg);
-        }
-
         ArrayDeque<ParcelObject> recordedObjects = sourceParcel.getRecordedObjects();
         ArrayDeque<ParcelObject> objectsToWrite = new ArrayDeque<>();
 
@@ -307,7 +269,38 @@ public class PermissionsPluginManager {
             case ParcelObject.PERTURBABLE_OBJECT:
                 PerturbableObject perturbableObject =
                     (PerturbableObject) recordedObject;
-                perturbObject(targetPkg, pluginProxy, perturbableObject, plugin);
+
+                // Retrieve active plugins
+                String targetAPI = perturbableToInterposer.get(perturbableObject.mPerturbableType);
+                List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg,targetAPI);
+                if (PermissionsPluginOptions.DEBUG) {
+                    Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
+                          " active plugins for app: " + targetPkg);
+                }
+
+                // If there are no active plugins do not proceed with perturbation
+                if (pluginList == null || pluginList.isEmpty()) {
+                    break;
+                }
+
+                // TODO: For now, we only support one active plugin per app.
+                // In particular, we consider the first available active plugin.
+                // In future, we should allow multiple plugins.
+                PermissionsPlugin plugin = pluginList.get(0);
+
+                PluginProxy pluginProxy =
+                    connectToPluginService(plugin.packageName, plugin.supportedAPIs);
+
+                // Check if the plugin proxy is connected to plugin service
+                if (pluginProxy == null || !pluginProxy.isConnected()) {
+                    break;
+                }
+
+                if (PermissionsPluginOptions.DEBUG) {
+                    Log.d(PermissionsPluginOptions.TAG, "Proceeding to perturb data for " + targetPkg);
+                }
+            
+                perturbObject(targetPkg, pluginProxy, perturbableObject);
                 objectsToWrite.add(perturbableObject);
                 break;
 
@@ -430,7 +423,8 @@ public class PermissionsPluginManager {
 
         // Check if any active plugin is available for the target package.
         // If so, proceed with the rest of the code. Otherwise, return null.
-        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        String targetAPI = perturbableToInterposer.get(Perturbable.CAMERA);
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg,targetAPI);
         if (PermissionsPluginOptions.DEBUG) {
             Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
                   " active plugins for app: " + targetPkg);
@@ -479,7 +473,8 @@ public class PermissionsPluginManager {
 
         // Check if any active plugin is available for the target package.
         // If so, proceed with the rest of the code. Otherwise, return null.
-        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        String targetAPI = perturbableToInterposer.get(Perturbable.CAMERA);
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg,targetAPI);
         if (PermissionsPluginOptions.DEBUG) {
             Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList.size() +
                   " active plugins for app: " + targetPkg);
@@ -522,7 +517,8 @@ public class PermissionsPluginManager {
     private IBinder getStorageInterposerImpl(String targetPkg) {
         // Check if any active plugin is available for the target package.
         // If so, proceed with the rest of the code. Otherwise, return null.
-        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg);
+        String targetAPI = perturbableToInterposer.get(Perturbable.STORAGE);
+        List<PermissionsPlugin> pluginList = getActivePermissionsPluginsForApp(targetPkg,targetAPI);
         if (PermissionsPluginOptions.DEBUG) {
             Log.d(PermissionsPluginOptions.TAG, "Received " + pluginList +
                   " active plugins for app: " + targetPkg);
@@ -661,10 +657,10 @@ public class PermissionsPluginManager {
     }
 
     // Retrieve list of active permissions plugin for a given package    
-    private List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage){
+    private List<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI){
         try {
             ParceledListSlice<PermissionsPlugin> parceledList =
-                    ActivityThread.getPackageManager().getActivePermissionsPluginsForApp(appPackage);
+                    ActivityThread.getPackageManager().getActivePermissionsPluginsForApp(appPackage, targetAPI);
             if (parceledList == null) {
                 return Collections.emptyList();
             }

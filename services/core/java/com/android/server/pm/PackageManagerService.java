@@ -712,6 +712,11 @@ public class PackageManagerService extends IPackageManager.Stub
      * A mapping between app package name and list of plugin packages
      * that apply to the app.
      * The keys are String (package name), values are set of Plugin packages.
+     * Note: Currently we consider '*' (indicating all packages)
+     * as a special package name and use it just like any other package/app.
+     * The actual interpretation of '*' happens in PackageManagerService API that are 
+     * responsible for fetching plugins for a particular app.
+     * The permissions plugin object, parser and db are agnostic to the meaning of '*'.
      */ 
     @GuardedBy("mPackages")
     final ArrayMap<String, Set<String>> mPackageToPermissionsPlugins = new ArrayMap<String, Set<String>>();
@@ -3206,10 +3211,8 @@ public class PackageManagerService extends IPackageManager.Stub
 
                 if(PermissionsPluginOptions.DEBUG){
                     Slog.d(PermissionsPluginOptions.TAG,"Permissions plugin loaded from db. Package name: " + 
-                        plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
-                        plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs + 
-                        "target APIS: " + plugin.targetAPIs + 
-                        " target packages: " + plugin.targetPackages);
+                        plugin.packageName + " supported packages: " + 
+                        plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs); 
                 }                         
             }else{
                 // We found newly installed package that is a permissions plugin.
@@ -3257,10 +3260,8 @@ public class PackageManagerService extends IPackageManager.Stub
 
             if(PermissionsPluginOptions.DEBUG){                        
                 Slog.d(PermissionsPluginOptions.TAG,"Permissions plugin parsed. Package name: " + 
-                    plugin.packageName + " active: " + plugin.isActive + " supported packages: " + 
-                    plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs +
-                    "target APIS: " + plugin.targetAPIs + 
-                    " target packages: " + plugin.targetPackages);
+                    plugin.packageName +  " supported packages: " + 
+                    plugin.supportedPackages + " supported APIS: " + plugin.supportedAPIs);
             }
         }
     }
@@ -3280,8 +3281,10 @@ public class PackageManagerService extends IPackageManager.Stub
         }
 
         // Remove the plugin from app to plugin map
-        for(String pkg : plugin.targetPackages){
-            mPackageToPermissionsPlugins.get(pkg).remove(plugin.packageName);
+        for(String pkg : plugin.supportedPackages){
+            if (mPackageToPermissionsPlugins.containsKey(pkg)) {
+                mPackageToPermissionsPlugins.get(pkg).remove(plugin.packageName);
+            }
         }
 
         // Remove the plugin from the plugin db
@@ -3303,7 +3306,7 @@ public class PackageManagerService extends IPackageManager.Stub
         mPermissionsPlugins.put(plugin.packageName,plugin);
 
         // Update app to permissions plugin mapping
-        for(String packageName : plugin.targetPackages){
+        for(String packageName : plugin.supportedPackages){
             if(!mPackageToPermissionsPlugins.containsKey(packageName)){
                 mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
             }
@@ -3312,30 +3315,34 @@ public class PackageManagerService extends IPackageManager.Stub
     }
 
     /**
-     * Return list of pemrissions plugins that supports given package name if the package is an app.
-     * Return an empty list if the give package is a plugin.
+     * Return list of pemrissions plugins that are activated by 
+     * user for given target app and target API.
+     * Return an empty list if the specified target package is a plugin or trusted app.
      * @hide
      */
     @Override
-    public ParceledListSlice<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage) {
+    public ParceledListSlice<PermissionsPlugin> getActivePermissionsPluginsForApp(String appPackage, String targetAPI) {
         synchronized (mPackages) {
             List<PermissionsPlugin> list = new ArrayList<>();
 
             // Return an empty list if the appPackage is trusted
-            if(isPackageTrusted(appPackage)){
+            if (isPackageTrusted(appPackage)) {
                 return new ParceledListSlice<>(list);
             }
 
             // Return an empty list if the appPackage is a plugin
-            if(mPermissionsPlugins.containsKey(appPackage)){
+            if (mPermissionsPlugins.containsKey(appPackage)) {
                 return new ParceledListSlice<>(list);
             }
 
-            // Add active plugins that supports given package
-            if(mPackageToPermissionsPlugins.containsKey(appPackage)){	
-                for(String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)){
+            // Search all the plugins that supports given app
+            if (mPackageToPermissionsPlugins.containsKey(appPackage)) {	
+                for (String pluginPackage : mPackageToPermissionsPlugins.get(appPackage)) {
                     PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-                    if(plugin.isActive){
+
+                    // Add plugin if it is selected by users for given app and API
+                    if (plugin.targetPackageToAPIs.containsKey(appPackage) && 
+                        plugin.targetPackageToAPIs.get(appPackage).contains(targetAPI)) {
                         list.add(plugin);
                     }
                 }				
@@ -3345,9 +3352,12 @@ public class PackageManagerService extends IPackageManager.Stub
             if(mPackageToPermissionsPlugins.containsKey(PermissionsPlugin.ALL_PACKAGES)){	        	
                 for(String pluginPackage : mPackageToPermissionsPlugins.get(PermissionsPlugin.ALL_PACKAGES)){
                     PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-                    if(plugin.isActive){
+                
+                    // Add plugin if it is selected by users for this app and API
+                    if (plugin.targetPackageToAPIs.containsKey(PermissionsPlugin.ALL_PACKAGES) && 
+                        plugin.targetPackageToAPIs.get(PermissionsPlugin.ALL_PACKAGES).contains(targetAPI)) {
                         list.add(plugin);
-                    }                    
+                    }
                 }
             }		
 
@@ -3368,19 +3378,12 @@ public class PackageManagerService extends IPackageManager.Stub
     @Override
     public boolean hasStoragePlugin(String packageName) {
         synchronized (mPackages) {
-
-            // TODO: For now, we only support one active plugin per app.
-            // In particular, we consider the first available active plugin.
-            // In future, we should allow multiple plugins.
-            List<PermissionsPlugin> plugins = getActivePermissionsPluginsForApp(packageName).getList();
+            List<PermissionsPlugin> plugins = getActivePermissionsPluginsForApp(packageName,PluginProxy.INTERPOSER_STORAGE).getList();
             if (!plugins.isEmpty()) {
-                PermissionsPlugin plugin = plugins.get(0);
-                if (plugin.targetAPIs.contains(PluginProxy.INTERPOSER_STORAGE)) {
-                    return true;
-                }
+                return true;
+            } else {
+                return false;
             }
-
-            return false;
         }
     }
 
@@ -3418,49 +3421,21 @@ public class PackageManagerService extends IPackageManager.Stub
         }        
     }
 
-    /**
-     * Activate permissions plugin.
-     * 
-     * @param pluginPackage package name of the plugin.
-     * @param isActive activation status.
-     * @return True if the activation status is successfully set otherwise false.
-     * @hide
-     */
-    @Override
-    public boolean setActivationStatusForPermissionsPlugin(String pluginPackage, boolean isActive) {
-        synchronized(mPackages){
-            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-            if(null == plugin){
-                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
-                return false;           
-            }
-
-            // Update plugin
-            plugin.isActive = isActive;
-
-            // Update plugin db
-            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);   
-
-            if(PermissionsPluginOptions.DEBUG){
-                Slog.d(PermissionsPluginOptions.TAG,"setActivationStatusForPermissionsPlugin " + pluginPackage + " update status: " + updatedRows);
-            }
-
-            return (updatedRows==1);         
-        }
-    }
-
 
     /**
-     * Add target packages of the plugin.
-     * 
+     * Activate/deactivate plugin for given target package/API.
+     *  
      * @param pluginPackage Package name of the plugin.
-     * @param targetPackages List of target packages to add.
-     * @param reset Flag to clear target package list before adding new target packages.
-     * @return True if the packages are added successfully, otherwise false.
+     * @param targetPackage Target package.
+     * @param targetAPI Target API.
+     * @param activate Flag to activate/deactivate plugin. 
+     * @return True if the activation flag is set successfully, otherwise false.
      * @hide
+     *
+     * FIXME: Optimize implementation by avoiding unnecessary updates.
      */
     @Override
-    public boolean addTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages, boolean reset){
+    public boolean activatePlugin(String pluginPackage, String targetPackage, String targetAPI, boolean activate){
         synchronized(mPackages){
             PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
             if(null == plugin){
@@ -3468,30 +3443,25 @@ public class PackageManagerService extends IPackageManager.Stub
                 return false;           
             }
 
-            // Clear the old target package list
-            if(reset){
-                // Before removing target packages 
-                // we need to remove their mapping to the plugin
-                for(String packageName : plugin.targetPackages){
-                    mPackageToPermissionsPlugins.get(packageName).remove(plugin.packageName);
-                }
-                plugin.targetPackages.clear();  
+            // Check if the target package is supported by the plugin
+            if (!(plugin.supportedPackages.contains(targetPackage) || plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES))) {
+                Slog.e(PermissionsPluginOptions.TAG,"The specified target package " + targetPackage + " is not supported by plugin " + pluginPackage);     
+                return false;
             }
-            
-            // Add target packages if they are in the supported packages
-            for(String packageName : targetPackages){
-                if(plugin.supportedPackages.contains(packageName) ||
-                    plugin.supportedPackages.contains(PermissionsPlugin.ALL_PACKAGES)){
 
-                    plugin.targetPackages.add(packageName);
+            if (!plugin.targetPackageToAPIs.containsKey(targetPackage)) {
+                plugin.targetPackageToAPIs.put(targetPackage,new ArrayList<String>());        
+            }
 
-                    // Update package to plugin map
-                    if(!mPackageToPermissionsPlugins.containsKey(packageName)){
-                        mPackageToPermissionsPlugins.put(packageName,new ArraySet<String>());   
-                    }
-                    mPackageToPermissionsPlugins.get(packageName).add(plugin.packageName);
-                }
-            }         
+            // Add target API if plugin is activated
+            if (activate && !plugin.targetPackageToAPIs.get(targetPackage).contains(targetAPI)) {
+                plugin.targetPackageToAPIs.get(targetPackage).add(targetAPI);
+            }
+
+            // Remove target API if plugin is deactivated
+            if (!activate && plugin.targetPackageToAPIs.get(targetPackage).contains(targetAPI)) {
+                plugin.targetPackageToAPIs.get(targetPackage).remove(targetAPI);
+            }
 
             // Update plugin in db
             int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
@@ -3500,123 +3470,9 @@ public class PackageManagerService extends IPackageManager.Stub
                 Slog.d(PermissionsPluginOptions.TAG,"addTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
             }
 
-            return (updatedRows == 1);
+            return (updatedRows > 0);
         }
     }
-
-
-    /**
-     * Remove target packages of the plugin.
-     * 
-     * @param pluginPackage Package name of the plugin.
-     * @param targetPackages List of target packages to remove.
-     * @return True if the packages are removed successfully, otherwise false.
-     * @hide
-     */
-    @Override
-    public boolean removeTargetPackagesForPlugin(String pluginPackage, List<String> targetPackages){
-        synchronized(mPackages){
-            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-            if(null == plugin){
-                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
-                return false;           
-            }
-
-            // Remove target packages and mapping 
-            // if they are indeed in the target package list
-            for(String packageName : targetPackages){
-                if(plugin.targetPackages.contains(packageName)){
-                    plugin.targetPackages.remove(packageName);
-                    mPackageToPermissionsPlugins.get(packageName).remove(plugin.packageName);
-                }
-            }         
-
-            // Update plugin in db
-            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
-
-            if(PermissionsPluginOptions.DEBUG){
-                Slog.d(PermissionsPluginOptions.TAG,"removeTargetPackagesForPlugin " + pluginPackage + " update status: " + updatedRows);
-            }
-
-
-            return (updatedRows == 1);
-        }
-    }
-
-    /**
-     * Add target APIs of the plugin.
-     * 
-     * @param pluginPackage Package name of the plugin.
-     * @param targetAPIs List of target APIs to add.
-     * @param reset Flag to clear target APIs list before adding new target APIs.
-     * @return True if the APIs are added successfully, otherwise false.
-     * @hide
-     */
-    @Override
-    public boolean addTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs, boolean reset){
-        synchronized(mPackages){
-            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-            if(null == plugin){
-                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
-                return false;           
-            }
-
-            // Clear the old target api list
-            if(reset){
-                plugin.targetAPIs.clear();  
-            }
-            
-            // Add target apis if they are in the supported apis
-            for(String api : targetAPIs){
-                if(plugin.supportedAPIs.contains(api)){
-                    plugin.targetAPIs.add(api);
-                }
-            }         
-
-            // Update plugin in db
-            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
-
-            if(PermissionsPluginOptions.DEBUG){
-                Slog.d(PermissionsPluginOptions.TAG,"addTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
-            }
-
-            return (updatedRows == 1);
-        }
-    }
-
-    /**
-     * Remove target APIs of the plugin.
-     * 
-     * @param pluginPackage Package name of the plugin.
-     * @param targetAPIs List of target APIs to remove.
-     * @return True if the APIs are removed successfully, otherwise false.
-     * @hide
-     */
-    @Override
-    public boolean removeTargetAPIsForPlugin(String pluginPackage, List<String> targetAPIs){
-        synchronized(mPackages){
-            PermissionsPlugin plugin = mPermissionsPlugins.get(pluginPackage);
-            if(null == plugin){
-                Slog.e(PermissionsPluginOptions.TAG,"Failed to get plugin with package " + pluginPackage);     
-                return false;           
-            }
-
-            // Remove target apis
-            for(String api : targetAPIs){
-                plugin.targetAPIs.remove(api);
-            }         
-
-            // Update plugin in db
-            int updatedRows = mPermissionsPluginDb.updatePlugin(plugin);
-
-            if(PermissionsPluginOptions.DEBUG){
-                Slog.d(PermissionsPluginOptions.TAG,"removeTargetAPIsForPlugin " + pluginPackage + " update status: " + updatedRows);
-            }
-
-            return (updatedRows == 1);
-        }
-    }
-
 
     /**
      * Check if the given package is trusted by matching package name
