@@ -3188,9 +3188,6 @@ public class PackageManagerService extends IPackageManager.Stub
 
         // Retrieve saved plugins from the plugin db
         ArrayMap<String,PermissionsPlugin> savedPlugins = mPermissionsPluginDb.loadPlugins();
-        if(PermissionsPluginOptions.DEBUG){
-            Slog.d(PermissionsPluginOptions.TAG,"Number of plugins loaded from db: "+savedPlugins.size());
-        }
 
         // Find newly installed permissions plugin by scanning the installed packages
         for (PackageParser.Package p : mPackages.values()) {
@@ -19266,9 +19263,21 @@ public class PackageManagerService extends IPackageManager.Stub
                 // If the installed package is a permissions plugin
                 // add plugin to db and update plugin map.
                 if(pkg.isPermissionsPlugin){
-                    if(PermissionsPluginOptions.DEBUG){
-                        Slog.d(PermissionsPluginOptions.TAG,"Found new plugin " + pkgName + ". Installing...");
+
+                    // Remove the plugin from the database 
+                    // if it was previously installed
+                    // TODO: Instead of removing the plugin 
+                    // update the db to maintain the plugin state. 
+                    if ((installFlags & PackageManager.INSTALL_REPLACE_EXISTING) != 0) {
+                        if(PermissionsPluginOptions.DEBUG){
+                            Slog.d(PermissionsPluginOptions.TAG,"Removing previously installed permissions plugin " + pkgName);
+                        }                        
+                        removePermissionsPluginLP(pkgName);
                     }
+
+                    if(PermissionsPluginOptions.DEBUG){
+                        Slog.d(PermissionsPluginOptions.TAG,"Installing permissions plugin " + pkgName);
+                    }                        
                     addPermissionsPluginLP(pkg);    
                 }
                 
