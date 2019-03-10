@@ -254,7 +254,6 @@ bail:
                     numThreads++;
                 } else if (statusType == (SIGTRAP | PTRACE_EVENT_EXIT << 8)) {
                     numThreads--;
-                    continue;
                 }
 
                 ret = ptrace(PTRACE_SYSCALL, pausedPid, 0, 0);
