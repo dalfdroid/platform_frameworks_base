@@ -393,6 +393,11 @@ public class PermissionsPluginManager {
      * {@hide}
      */
     public static Parcel perturbDataForBinderProxy(int targetPid, Parcel sourceParcel) {
+        
+        // No need to perturb the data if the source and target processes are same
+        if (android.os.Process.myPid() == targetPid) {
+            return null;
+        }
 
         if (!sourceParcel.hasPerturbables()) {
             return null;
@@ -410,6 +415,13 @@ public class PermissionsPluginManager {
      * {@hide}
      */
     public static void fixupParcelForBinder(int callingPid, Parcel sourceParcel, Parcel targetParcel) {
+
+        // No need to perturb the data if the source and target processes are same
+        if (android.os.Process.myPid() == callingPid) {
+            copySourceToTargetParcel(sourceParcel, targetParcel,
+                sourceParcel.getRecordedObjects());
+            return;
+        }
 
         if (!sourceParcel.hasPerturbables()) {
             copySourceToTargetParcel(sourceParcel, targetParcel,
